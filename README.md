@@ -1,42 +1,50 @@
-# Template DataForGood
+# Assemblée Nationale
 
-This file will become your README and also the index of your
-documentation.
+TODO: petite présentation du projet.
+
+## Description des données
+
+Nous utilisons l'api des [tricoteuses](https://www.tricoteuses.fr/) pour récupérer les données. Voici le lien vers la [documentation](https://parlement.tricoteuses.fr/docs#description/introduction).
+
+
+L'Assemblée Nationale travaille à partir de dossier legislatif. Un dossier législatif permet de suivre l'évolution d'un texte législatif: en commission, au sénat, amendements... Deux types de textes législatifs nous intéressent: proposition de loi proposé par un député, projet de loi proposé par le gouvernement.
+
+Voici les différents endpoint: 
+* dossiers => `https://parlement.tricoteuses.fr/dossiers`
+* texte de loi => `https://parlement.tricoteuses.fr/documents`
+* amendements => `https://parlement.tricoteuses.fr/amendements`
+* députés => `https://parlement.tricoteuses.fr/acteurs`
+* votes => `https://parlement.tricoteuses.fr/scrutins`
+
+L'API propose de nombreux endpoints.
+
+
+[Information sur le chemin d'une loi](https://www.assemblee-nationale.fr/dyn/actualites-accueil-hub/le-parcours-de-la-loi)
+[Les documents parlementaires](https://www.assemblee-nationale.fr/dyn/documents-parlementaires)
+
+[Documentation technique de l'API des tricoteuses](https://parlement.tricoteuses.fr/docs#description/introduction)
 
 # Contributing
 
 
 ## Installation
 
+### Dépendences à installer
+
 - [Installation de Python](#installation-de-python)
+- [Installation d'UV](https://docs.astral.sh/uv/)
 
-Ce projet utilise [uv](https://docs.astral.sh/uv/) pour la gestion des dépendances Python. Il est préréquis pour l'installation de ce projet.
-
-Une fois installé, il suffit de lancer la commande suivante pour installer la version de Python adéquate, créer un environnement virtuel et installer les dépendances du projet.
-
+### Setup
 ```bash
 uv sync
 ```
 
-A l'usage, si vous utilisez VSCode, l'environnement virtuel sera automatiquement activé lorsque vous ouvrirez le projet. Sinon, il suffit de l'activer manuellement avec la commande suivante :
+### Usages
+
+#### Télécharger les données sur l'API des tricoteuses
+
+La commande suivante va télécharger sur l'API des [tricoteuses](https://www.tricoteuses.fr/) et créer des fichiers json dans le répertoire `./data/`. Pour rajouter un endpoint, il suffit de modifier la variable `APIS` dans `./etl/download.py`
 
 ```bash
-source .venv/bin/activate
+uv run etl/download.py
 ```
-
-Ou alors, utilisez la commande `uv run ...` (au lieu de `python ...`) pour lancer un script Python. Par exemple:
-
-```bash
-uv run pipelines/run.py run build_database
-```
-
-
-## Lancer les precommit-hook localement
-
-[Installer les precommit](https://pre-commit.com/)
-
-    pre-commit run --all-files
-
-## Utiliser Tox pour tester votre code
-
-    tox -vv
