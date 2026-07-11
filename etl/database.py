@@ -31,9 +31,10 @@ def _get_db_url():
 
 def get_engine():
     """Return a configured SQLAlchemy engine"""
-    PG_ECHO = getenv("PG_ECHO", False)
+    # getenv renvoie une chaîne : bool("False") vaudrait True, d'où la comparaison explicite.
+    pg_echo = getenv("PG_ECHO", "").strip().lower() == "true"
     pg_url = _get_db_url()
-    return create_engine(pg_url, poolclass=pool.NullPool, echo=bool(PG_ECHO))
+    return create_engine(pg_url, poolclass=pool.NullPool, echo=pg_echo)
 
 
 def _get_etl_tables():
