@@ -23,9 +23,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai import RateLimitError
-from sqlalchemy import text
+from sqlalchemy import delete, text
+from sqlalchemy.orm import Session
 
 from etl.database import get_engine
+from models.amendement_mention import AmendementMention
 
 OUTPUT_DIR = Path("analysis/output")
 
@@ -138,48 +140,89 @@ def detect(client: OpenAI, model: str, expose: str, max_retries: int = 4) -> dic
     return parse_json(content)
 
 
-def run(limit: int, offset: int, random_sample: bool = False, delay: float = 4.0):
+def persist_mentions(session: Session, uid: str, mentions: list[dict], model: str):
+    """Réécrit les mentions d'un amendement en base (delete puis insert).
+
+    Idempotent : un re-run sur le même amendement remplace ses lignes, donc une
+    mention disparue lors d'une nouvelle passe est bien supprimée.
+    """
+    session.execute(
+        delete(AmendementMention).where(AmendementMention.amendementUid == uid)
+    )
+    for m in mentions:
+        externe = m.get("externe")
+        session.add(
+            AmendementMention(
+                amendementUid=uid,
+                citation=str(m.get("citation") or ""),
+                formulation=m.get("formulation"),
+                entite=m.get("entite"),
+                typeEntite=m.get("type_entite"),
+                externe=externe if isinstance(externe, bool) else None,
+                modele=model,
+            )
+        )
+    session.commit()
+
+
+def run(
+    limit: int,
+    offset: int,
+    random_sample: bool = False,
+    delay: float = 4.0,
+    persist: bool = False,
+):
     load_dotenv()
     api_key, base_url, model = get_config()
     client = OpenAI(api_key=api_key, base_url=base_url)
 
     rows = fetch_amendements(limit, offset, random_sample)
-    print(f"Analyse de {len(rows)} amendements (modèle: {model})...")
+    dest = "base + JSONL" if persist else "JSONL"
+    print(f"Analyse de {len(rows)} amendements (modèle: {model}, sortie: {dest})...")
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUTPUT_DIR / "mentions_sample.jsonl"
 
     formulations: dict[str, int] = {}
     nb_avec_mention = 0
+    session = Session(get_engine()) if persist else None
 
-    with out_path.open("w", encoding="utf-8") as out:
-        for i, (uid, numero, expose) in enumerate(rows, start=1):
-            if i > 1:
-                time.sleep(delay)
-            try:
-                result = detect(client, model, expose)
-                mentions = result.get("mentions", [])
-            except Exception as e:  # noqa: BLE001 - on veut continuer le run
-                print(f"  [{i}/{len(rows)}] {uid}: erreur -> {e}")
+    try:
+        with out_path.open("w", encoding="utf-8") as out:
+            for i, (uid, numero, expose) in enumerate(rows, start=1):
+                if i > 1:
+                    time.sleep(delay)
+                try:
+                    result = detect(client, model, expose)
+                    mentions = result.get("mentions", [])
+                except Exception as e:  # noqa: BLE001 - on veut continuer le run
+                    print(f"  [{i}/{len(rows)}] {uid}: erreur -> {e}")
+                    out.write(
+                        json.dumps({"uid": uid, "error": str(e)}, ensure_ascii=False)
+                        + "\n"
+                    )
+                    continue
+
                 out.write(
-                    json.dumps({"uid": uid, "error": str(e)}, ensure_ascii=False) + "\n"
+                    json.dumps(
+                        {"uid": uid, "numero": numero, "mentions": mentions},
+                        ensure_ascii=False,
+                    )
+                    + "\n"
                 )
-                continue
 
-            out.write(
-                json.dumps(
-                    {"uid": uid, "numero": numero, "mentions": mentions},
-                    ensure_ascii=False,
-                )
-                + "\n"
-            )
+                if session is not None:
+                    persist_mentions(session, uid, mentions, model)
 
-            if mentions:
-                nb_avec_mention += 1
-                for m in mentions:
-                    formulation = (m.get("formulation") or "?").strip().lower()
-                    formulations[formulation] = formulations.get(formulation, 0) + 1
-                print(f"  [{i}/{len(rows)}] {uid}: {len(mentions)} mention(s)")
+                if mentions:
+                    nb_avec_mention += 1
+                    for m in mentions:
+                        formulation = (m.get("formulation") or "?").strip().lower()
+                        formulations[formulation] = formulations.get(formulation, 0) + 1
+                    print(f"  [{i}/{len(rows)}] {uid}: {len(mentions)} mention(s)")
+    finally:
+        if session is not None:
+            session.close()
 
     print(f"\n{nb_avec_mention}/{len(rows)} amendements avec au moins une mention.")
     print("Formulations rencontrées (fréquence) :")
@@ -209,8 +252,13 @@ def main():
         default=4.0,
         help="Pause en secondes entre deux appels (throttle anti rate-limit)",
     )
+    parser.add_argument(
+        "--persist",
+        action="store_true",
+        help="Écrit aussi les mentions dans la table amendement_mentions",
+    )
     args = parser.parse_args()
-    run(args.limit, args.offset, args.random, args.delay)
+    run(args.limit, args.offset, args.random, args.delay, args.persist)
 
 
 if __name__ == "__main__":
