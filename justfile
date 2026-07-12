@@ -21,3 +21,7 @@ all:
 # Run psql to explore the database
 psql:
   psql -h localhost -U postgres -d ipolitics
+
+# Detect external-collaboration mentions on a sample of amendments (v1, no pre-filter)
+detect-mentions limit="50":
+  uv run python -m analysis.detect_mentions --limit {{limit}}
