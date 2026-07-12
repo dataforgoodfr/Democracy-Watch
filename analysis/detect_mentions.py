@@ -1,13 +1,8 @@
-"""Détection exploratoire (v1, sans pré-filtre) des mentions de collaboration externe.
+"""Détection exploratoire (v1, utilsant uniquement un llm) des mentions de collaboration externe dans les amendements.
 
-On envoie l'exposé sommaire de chaque amendement à un modèle (API OpenAI-compatible :
-Scaleway, OpenRouter...) et on lui demande de repérer les passages où l'auteur déclare
+On envoie l'exposé sommaire de chaque amendement à un modèle (API OpenAI-compatible) et on lui demande de repérer les passages où l'auteur déclare
 avoir « travaillé avec », « été inspiré par », etc. une entité externe (lobby,
 association, syndicat, entreprise, fédération professionnelle, ONG...).
-
-Cette version tourne sur un sous-ensemble et écrit les résultats bruts dans un fichier
-JSONL, sans rien persister en base : l'objectif est d'observer les formulations réelles
-avant de figer une table d'analyse.
 
 Usage:
     uv run python -m analysis.detect_mentions --limit 50
@@ -141,10 +136,9 @@ def detect(client: OpenAI, model: str, expose: str, max_retries: int = 4) -> dic
 
 
 def persist_mentions(session: Session, uid: str, mentions: list[dict], model: str):
-    """Réécrit les mentions d'un amendement en base (delete puis insert).
+    """Ecrit ou réécrit les mentions d'un amendement en base (delete puis insert).
 
-    Idempotent : un re-run sur le même amendement remplace ses lignes, donc une
-    mention disparue lors d'une nouvelle passe est bien supprimée.
+    Idempotent : un re-run sur le même amendement remplace ses lignes existantes.
     """
     session.execute(
         delete(AmendementMention).where(AmendementMention.amendementUid == uid)
