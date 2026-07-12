@@ -148,7 +148,7 @@ inspiration avec une **entité externe** (lobby, syndicat, association, entrepri
 professionnelle, ONG…) — formulations du type « travaillé avec… », « en concertation avec… »,
 « inspiré de… ».
 
-Version **v1 exploratoire, sans pré-filtre** : chaque amendement est soumis à un modèle de langage
+Version **v1 exploratoire** : chaque amendement est soumis à un modèle de langage
 (`analysis/detect_mentions.py`).
 
 ## Prérequis
@@ -159,11 +159,11 @@ Version **v1 exploratoire, sans pré-filtre** : chaque amendement est soumis à 
 
 ```dotenv
 LLM_API_KEY=...                              # clé du provider
-LLM_BASE_URL=https://openrouter.ai/api/v1    # endpoint OpenAI-compatible
-LLM_MODEL=qwen/qwen3-30b-a3b                  # identifiant exact du modèle
+LLM_BASE_URL=...    # endpoint OpenAI-compatible
+LLM_MODEL=...                  # identifiant exact du modèle
 ```
 
-Changer de provider = changer ces trois lignes, rien d'autre.
+Changer de provider = changer ces trois lignes.
 
 ## Lancer une analyse
 
