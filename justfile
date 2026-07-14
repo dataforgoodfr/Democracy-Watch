@@ -21,3 +21,8 @@ all:
 # Run psql to explore the database
 psql:
   psql -h localhost -U postgres -d ipolitics
+
+# Detect external-collaboration mentions in amendments with regexes
+# Extra flags pass through, e.g.: just detect-mentions-regex --persist --limit 100
+detect-mentions-regex *ARGS:
+  uv run python -m analysis.detect_mentions_regex {{ARGS}}

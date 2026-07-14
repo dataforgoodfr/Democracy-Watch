@@ -1,5 +1,6 @@
 # Project ignore
 data/*
+analysis/output/
 
 
 # From https://github.com/github/gitignore/blob/main/Python.gitignore
