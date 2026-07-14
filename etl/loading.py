@@ -3,10 +3,15 @@ from sqlalchemy.orm import Session
 
 from etl.database import get_engine
 
+# Nombre de lignes par INSERT. Le protocole Postgres plafonne à 65 535 paramètres
+# par requête : avec ~30 colonnes, 1 000 lignes restent largement sous la limite.
+BATCH_SIZE = 1000
+
 
 def load(table, data):
-    """Load into the database the data for the given_fields"""
+    """Load into the database the data for the given_fields, in batches."""
     with Session(get_engine()) as session:
-        insert_statement = insert(table).values(data).on_conflict_do_nothing()
-        session.execute(insert_statement)
+        for start in range(0, len(data), BATCH_SIZE):
+            batch = data[start : start + BATCH_SIZE]
+            session.execute(insert(table).values(batch).on_conflict_do_nothing())
         session.commit()
