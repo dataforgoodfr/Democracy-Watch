@@ -125,3 +125,53 @@ class User(Base):
 Le champ doit porter le même nom sinon l'ETL ne sera pas capable de le trouver.
 
 2. Exécuter `just all`
+
+## Objets parlementaires chargés
+
+Au-delà des `dossiers` et `amendements`, l'ETL charge les objets de l'API des tricoteuses
+nécessaires aux recoupements « qui propose / porte quel texte, via quel groupe, et comment
+c'est voté » :
+
+| Table | Endpoint | Contenu | Volume (législature 17) |
+|---|---|---|---|
+| `acteurs` | `/acteurs` | Députés / sénateurs (référentiel trans-législature) | ~3 100 |
+| `organes` | `/organes` | Groupes politiques, commissions, assemblées… | ~6 100 |
+| `mandats` | `/mandats` | Jointure acteur ↔ organe (appartenance + dates) | ~25 600 |
+| `scrutins` | `/scrutins` | Scrutins publics et résultat agrégé (pour/contre/abstentions) | ~8 300 |
+| `documents` | `/documents` | Textes (projets/propositions de loi, rapports…) | ~4 500 |
+| `auteursDocument` | `/auteursDocument` | Auteur(s) d'un document | ~20 000 |
+| `coSignatairesDocument` | `/coSignatairesDocument` | Co-signataires d'un document | ~116 000 |
+
+Les jointures se font par les colonnes `…RefUid` (références molles, indexées) :
+
+```
+amendements → acteurRefUid / groupePolitiqueRefUid
+    ↓                    ↓
+ acteurs ←── mandats ──→ organes (groupe politique)
+    ↓
+documents (dossierRefUid → dossiers) → auteursDocument / coSignatairesDocument → acteurs
+    ↓
+scrutins (amendementRefUid → amendements ; documentRefUid → documents) : résultat du vote
+```
+
+Le lien **amendement ↔ scrutin** est natif : `scrutins.amendementRefUid` pointe vers
+`amendements.uid` (quand `scrutins.typeObjet = 'amendement'`). Seule une minorité d'amendements
+passe par un scrutin public (les autres sont tranchés à main levée), la jointure est donc
+volontairement clairsemée.
+
+### Filtre de législature
+
+`etl/download.py` associe à chaque endpoint un booléen indiquant s'il faut filtrer par
+`legislature=17`. Trois cas :
+
+- **Filtré L17** : `dossiers`, `documents`, `amendements`, `scrutins`, `mandats` — l'API
+  supporte le filtre et il est pertinent de se limiter à la 17ᵉ législature.
+- **Non filtré, référentiel complet** : `acteurs` (renvoie une 500 avec le filtre), `organes`
+  (partagé entre législatures) — gardés entiers pour éviter des références orphelines.
+- **Non filtré faute de paramètre** : `auteursDocument`, `coSignatairesDocument` — l'endpoint
+  n'expose pas de filtre `legislature` ; on les scope à la L17 par jointure sur
+  `documents.legislature = 17` au moment de l'analyse.
+
+> Note : l'endpoint `/votes` (votes nominatifs individuels) n'expose **pas** de filtre
+> `legislature` et mélange plusieurs législatures ; il n'est volontairement pas chargé pour
+> l'instant. Le résultat agrégé par scrutin (`scrutins`) suffit à la plupart des recoupements.

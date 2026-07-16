@@ -10,7 +10,18 @@ from models.base import Base
 # Les tables d'analyse (ajoutées plus tard) en sont volontairement exclues afin
 # que leurs résultats survivent à un rebuild et ne soient pas traitées comme des
 # fichiers source à charger.
-ETL_TABLES = {"dossiers", "amendements"}
+ETL_TABLES = {
+    "dossiers",
+    "amendements",
+    # Objets ajoutés pour les recoupements auteur / groupe / texte / vote agrégé.
+    "acteurs",
+    "organes",
+    "mandats",
+    "scrutins",
+    "documents",
+    "auteursDocument",
+    "coSignatairesDocument",
+}
 
 
 def _get_db_url():
