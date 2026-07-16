@@ -142,25 +142,85 @@ c'est voté » :
 | `auteursDocument` | `/auteursDocument` | Auteur(s) d'un document | ~20 000 |
 | `coSignatairesDocument` | `/coSignatairesDocument` | Co-signataires d'un document | ~116 000 |
 
-Les jointures se font par les colonnes `…RefUid` (références molles, indexées). Chaque flèche
-`A -->|colonne| B` se lit : la colonne `colonne` de **A** référence l'`uid` de **B**.
+Les jointures se font par les colonnes `…RefUid` (références molles, nullable, indexées). Schéma
+entité-relation ci-dessous — les boîtes ne montrent que les colonnes clés (PK + FK + quelques
+champs parlants) ; la liste complète est dans les modèles `models/`.
 
 ```mermaid
-flowchart LR
-  amendements -->|acteurRefUid| acteurs
-  amendements -->|groupePolitiqueRefUid| organes
-  amendements -->|dossierRefUid| dossiers
-  amendements -->|documentRefUid| documents
-  scrutins -->|amendementRefUid| amendements
-  scrutins -->|documentRefUid| documents
-  documents -->|dossierRefUid| dossiers
-  documents -->|auteurPrincipalUid| acteurs
-  auteursDocument -->|documentRefUid| documents
-  auteursDocument -->|acteurRefUid| acteurs
-  coSignatairesDocument -->|documentRefUid| documents
-  coSignatairesDocument -->|acteurRefUid| acteurs
-  mandats -->|acteurRefUid| acteurs
-  mandats -->|organeRefUid| organes
+erDiagram
+  dossiers {
+    string uid PK
+    string titre
+  }
+  documents {
+    string uid PK
+    string dossierRefUid FK
+    string auteurPrincipalUid FK
+    string classeLibelle
+    bool   texteLoi
+  }
+  amendements {
+    string uid PK
+    string acteurRefUid FK
+    string groupePolitiqueRefUid FK
+    string dossierRefUid FK
+    string documentRefUid FK
+    string sortAmendement
+  }
+  acteurs {
+    string uid PK
+    string nom
+    string prenom
+    string chambre
+  }
+  organes {
+    string uid PK
+    string codeType
+    string libelleAbrev
+  }
+  mandats {
+    string uid PK
+    string acteurRefUid FK
+    string organeRefUid FK
+    string typeOrgane
+    string dateDebut
+    string dateFin
+  }
+  scrutins {
+    string uid PK
+    string amendementRefUid FK
+    string documentRefUid FK
+    string typeObjet
+    string code
+    int    pour
+    int    contre
+  }
+  auteursDocument {
+    string uid PK
+    string documentRefUid FK
+    string acteurRefUid FK
+    string qualite
+  }
+  coSignatairesDocument {
+    string uid PK
+    string documentRefUid FK
+    string acteurRefUid FK
+  }
+
+  dossiers    ||--o{ documents             : "dossierRefUid"
+  dossiers    ||--o{ amendements           : "dossierRefUid"
+  documents   ||--o{ amendements           : "documentRefUid"
+  acteurs     ||--o{ amendements           : "acteurRefUid"
+  organes     ||--o{ amendements           : "groupePolitiqueRefUid"
+  acteurs     ||--o{ mandats               : "acteurRefUid"
+  organes     ||--o{ mandats               : "organeRefUid"
+  acteurs     ||--o{ documents             : "auteurPrincipalUid"
+  documents   ||--o{ auteursDocument       : "documentRefUid"
+  acteurs     ||--o{ auteursDocument       : "acteurRefUid"
+  documents   ||--o{ coSignatairesDocument : "documentRefUid"
+  acteurs     ||--o{ coSignatairesDocument : "acteurRefUid"
+  amendements ||--o{ scrutins              : "amendementRefUid"
+  documents   ||--o{ scrutins              : "documentRefUid"
 ```
 
 Le lien **amendement ↔ scrutin** est natif : `scrutins.amendementRefUid` pointe vers
