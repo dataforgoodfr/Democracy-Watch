@@ -142,16 +142,25 @@ c'est voté » :
 | `auteursDocument` | `/auteursDocument` | Auteur(s) d'un document | ~20 000 |
 | `coSignatairesDocument` | `/coSignatairesDocument` | Co-signataires d'un document | ~116 000 |
 
-Les jointures se font par les colonnes `…RefUid` (références molles, indexées) :
+Les jointures se font par les colonnes `…RefUid` (références molles, indexées). Chaque flèche
+`A -->|colonne| B` se lit : la colonne `colonne` de **A** référence l'`uid` de **B**.
 
-```
-amendements → acteurRefUid / groupePolitiqueRefUid
-    ↓                    ↓
- acteurs ←── mandats ──→ organes (groupe politique)
-    ↓
-documents (dossierRefUid → dossiers) → auteursDocument / coSignatairesDocument → acteurs
-    ↓
-scrutins (amendementRefUid → amendements ; documentRefUid → documents) : résultat du vote
+```mermaid
+flowchart LR
+  amendements -->|acteurRefUid| acteurs
+  amendements -->|groupePolitiqueRefUid| organes
+  amendements -->|dossierRefUid| dossiers
+  amendements -->|documentRefUid| documents
+  scrutins -->|amendementRefUid| amendements
+  scrutins -->|documentRefUid| documents
+  documents -->|dossierRefUid| dossiers
+  documents -->|auteurPrincipalUid| acteurs
+  auteursDocument -->|documentRefUid| documents
+  auteursDocument -->|acteurRefUid| acteurs
+  coSignatairesDocument -->|documentRefUid| documents
+  coSignatairesDocument -->|acteurRefUid| acteurs
+  mandats -->|acteurRefUid| acteurs
+  mandats -->|organeRefUid| organes
 ```
 
 Le lien **amendement ↔ scrutin** est natif : `scrutins.amendementRefUid` pointe vers
