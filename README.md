@@ -16,7 +16,6 @@ Voici les différents endpoint:
 * députés => `https://parlement.tricoteuses.fr/acteurs`
 * votes => `https://parlement.tricoteuses.fr/scrutins`
 
-L'API propose de nombreux endpoints.
 
 
 [Information sur le chemin d'une loi](https://www.assemblee-nationale.fr/dyn/actualites-accueil-hub/le-parcours-de-la-loi)
@@ -128,9 +127,6 @@ Le champ doit porter le même nom sinon l'ETL ne sera pas capable de le trouver.
 
 ## Objets parlementaires chargés
 
-Au-delà des `dossiers` et `amendements`, l'ETL charge les objets de l'API des tricoteuses
-nécessaires aux recoupements « qui propose / porte quel texte, via quel groupe, et comment
-c'est voté » :
 
 | Table | Endpoint | Contenu | Volume (législature 17) |
 |---|---|---|---|
@@ -227,20 +223,3 @@ Le lien **amendement ↔ scrutin** est natif : `scrutins.amendementRefUid` point
 `amendements.uid` (quand `scrutins.typeObjet = 'amendement'`). Seule une minorité d'amendements
 passe par un scrutin public (les autres sont tranchés à main levée), la jointure est donc
 volontairement clairsemée.
-
-### Filtre de législature
-
-`etl/download.py` associe à chaque endpoint un booléen indiquant s'il faut filtrer par
-`legislature=17`. Trois cas :
-
-- **Filtré L17** : `dossiers`, `documents`, `amendements`, `scrutins`, `mandats` — l'API
-  supporte le filtre et il est pertinent de se limiter à la 17ᵉ législature.
-- **Non filtré, référentiel complet** : `acteurs` (renvoie une 500 avec le filtre), `organes`
-  (partagé entre législatures) — gardés entiers pour éviter des références orphelines.
-- **Non filtré faute de paramètre** : `auteursDocument`, `coSignatairesDocument` — l'endpoint
-  n'expose pas de filtre `legislature` ; on les scope à la L17 par jointure sur
-  `documents.legislature = 17` au moment de l'analyse.
-
-> Note : l'endpoint `/votes` (votes nominatifs individuels) n'expose **pas** de filtre
-> `legislature` et mélange plusieurs législatures ; il n'est volontairement pas chargé pour
-> l'instant. Le résultat agrégé par scrutin (`scrutins`) suffit à la plupart des recoupements.
