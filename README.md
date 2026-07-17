@@ -34,9 +34,22 @@ Voici les différents endpoint:
 - [Installation d'UV](https://docs.astral.sh/uv/)
 
 ### Setup
+
+1. Installer les dépendances :
 ```bash
 uv sync
 ```
+
+2. Créer le fichier `.env` à partir de l'exemple, puis l'adapter si besoin :
+```bash
+cp .env.example .env
+```
+
+3. Démarrer PostgreSQL (instance locale définie dans `docker-compose.yml`, sur le port `5432`) :
+```bash
+docker compose up -d db
+```
+Les valeurs par défaut de `.env.example` correspondent à ce conteneur (`postgres`/`postgres`, base `ipolitics`).
 
 ### Usages
 
@@ -111,12 +124,12 @@ Voici une partie du fichier `./data/dossiers.json`
 
 Je veux rajouter le champ `chambre` dans la DB et faire en sorte que l'ETL l'ajoute de lui-même.
 1. Rajouter le champ dans le modèle
-```
-class User(Base):
+```python
+class Dossier(Base):
     __tablename__ = "dossiers"
 
     uid: Mapped[str] = mapped_column(primary_key=True)
-    titre: Mapped[str] = mapped_column(String(500))
+    titre: Mapped[str] = mapped_column(String(1000))
     dataset: Mapped[int]
     chambre: Mapped[str] = mapped_column(String(5)) # <-------- nouvelle colonne qui porte le même nom que le champ du fichier json
 ```
