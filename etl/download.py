@@ -14,8 +14,9 @@ LEGISLATURE = 17
 #              le filtre ; `organes` est partagé et on le veut complet pour éviter des
 #              références orphelines) ;
 #            - les endpoints qui n'exposent pas de paramètre `legislature`
-#              (`auteursDocument`, `coSignatairesDocument`) : on les scope alors à la
-#              L17 par jointure sur `documents` au moment de l'analyse.
+#              (`auteursDocument`, `coSignatairesDocument`, `groupesVotants`) : on les
+#              scope alors à la L17 par jointure (sur `documents` ou `scrutins`) au
+#              moment de l'analyse.
 APIS = {
     "dossiers": True,
     "documents": True,
@@ -26,6 +27,7 @@ APIS = {
     "scrutins": True,
     "auteursDocument": False,
     "coSignatairesDocument": False,
+    "groupesVotants": False,
 }
 
 BATCH_SIZE = 500

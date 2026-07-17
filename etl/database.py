@@ -18,6 +18,7 @@ ETL_TABLES = {
     "organes",
     "mandats",
     "scrutins",
+    "groupesVotants",
     "documents",
     "auteursDocument",
     "coSignatairesDocument",

@@ -4,6 +4,7 @@ from models.auteur_document import AuteurDocument  # noqa: F401
 from models.cosignataire_document import CoSignataireDocument  # noqa: F401
 from models.document import Document  # noqa: F401
 from models.dossier import Dossier  # noqa: F401
+from models.groupe_votant import GroupeVotant  # noqa: F401
 from models.mandat import Mandat  # noqa: F401
 from models.organe import Organe  # noqa: F401
 from models.scrutin import Scrutin  # noqa: F401

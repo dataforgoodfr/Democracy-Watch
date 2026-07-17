@@ -144,12 +144,17 @@ Le champ doit porter le même nom sinon l'ETL ne sera pas capable de le trouver.
 | Table | Endpoint | Contenu | Volume (législature 17) |
 |---|---|---|---|
 | `acteurs` | `/acteurs` | Députés / sénateurs (référentiel trans-législature) | ~3 100 |
-| `organes` | `/organes` | Groupes politiques, commissions, assemblées… | ~6 100 |
+| `organes` | `/organes` | Groupes politiques, commissions, assemblées… | ~5 400 |
 | `mandats` | `/mandats` | Jointure acteur ↔ organe (appartenance + dates) | ~25 600 |
-| `scrutins` | `/scrutins` | Scrutins publics et résultat agrégé (pour/contre/abstentions) | ~8 300 |
+| `scrutins` | `/scrutins` | Scrutins publics et résultat agrégé (pour/contre/abstentions) | ~8 200 |
+| `groupesVotants` | `/groupesVotants` | Résultat d'un scrutin ventilé par groupe politique | ~121 500 * |
 | `documents` | `/documents` | Textes (projets/propositions de loi, rapports…) | ~4 500 |
 | `auteursDocument` | `/auteursDocument` | Auteur(s) d'un document | ~20 000 |
 | `coSignatairesDocument` | `/coSignatairesDocument` | Co-signataires d'un document | ~116 000 |
+
+\* `groupesVotants` n'expose pas de filtre `legislature` : la table couvre toutes les législatures
+(~98 300 lignes se rattachent à un scrutin de la L17, soit 12 groupes pour chacun des 8 192
+scrutins concernés). Se scoper par jointure sur `scrutins`.
 
 Les jointures se font par les colonnes `…RefUid` (références molles, nullable, indexées). Schéma
 entité-relation ci-dessous — les boîtes ne montrent que les colonnes clés (PK + FK + quelques
@@ -160,6 +165,8 @@ erDiagram
   dossiers {
     string uid PK
     string titre
+    string libelleProcedure
+    string statut
   }
   documents {
     string uid PK
@@ -174,6 +181,7 @@ erDiagram
     string groupePolitiqueRefUid FK
     string dossierRefUid FK
     string documentRefUid FK
+    string scrutinRefUid FK
     string sortAmendement
   }
   acteurs {
@@ -204,6 +212,14 @@ erDiagram
     int    pour
     int    contre
   }
+  groupesVotants {
+    string uid PK
+    string scrutinRefUid FK
+    string organeRefUid FK
+    string positionMajoritaire
+    int    pour
+    int    contre
+  }
   auteursDocument {
     string uid PK
     string documentRefUid FK
@@ -230,9 +246,12 @@ erDiagram
   acteurs     ||--o{ coSignatairesDocument : "acteurRefUid"
   amendements ||--o{ scrutins              : "amendementRefUid"
   documents   ||--o{ scrutins              : "documentRefUid"
+  scrutins    ||--o{ groupesVotants        : "scrutinRefUid"
+  organes     ||--o{ groupesVotants        : "organeRefUid"
 ```
 
-Le lien **amendement ↔ scrutin** est natif : `scrutins.amendementRefUid` pointe vers
-`amendements.uid` (quand `scrutins.typeObjet = 'amendement'`). Seule une minorité d'amendements
-passe par un scrutin public (les autres sont tranchés à main levée), la jointure est donc
-volontairement clairsemée.
+Le lien **amendement ↔ scrutin** est natif, et dans les deux sens : `scrutins.amendementRefUid`
+pointe vers l'amendement tranché par le scrutin, et `amendements.scrutinRefUid` vers le scrutin
+qui a tranché l'amendement. Le second est le plus large (~11 600 amendements contre ~6 800),
+un même scrutin pouvant trancher plusieurs amendements identiques. La jointure reste clairsemée :
+la plupart des amendements sont tranchés à main levée, sans scrutin public.
