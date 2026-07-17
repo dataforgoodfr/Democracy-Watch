@@ -172,8 +172,10 @@ erDiagram
     string uid PK
     string dossierRefUid FK
     string auteurPrincipalUid FK
+    text   titrePrincipal
     string classeLibelle
     bool   texteLoi
+    string dateDepot
   }
   amendements {
     string uid PK
@@ -182,35 +184,46 @@ erDiagram
     string dossierRefUid FK
     string documentRefUid FK
     string scrutinRefUid FK
+    string numeroLong
+    string divisionArticleDesignation
+    text   exposeSommaire
     string sortAmendement
+    string dateDepot
   }
   acteurs {
     string uid PK
+    string groupeParlementaireUid FK
     string nom
     string prenom
     string chambre
+    bool   actif
   }
   organes {
     string uid PK
     string codeType
     string libelleAbrev
+    string positionPolitique
   }
   mandats {
     string uid PK
     string acteurRefUid FK
     string organeRefUid FK
     string typeOrgane
+    string libQualite
     string dateDebut
     string dateFin
   }
   scrutins {
     string uid PK
-    string amendementRefUid FK
+    string dossierRefUid FK
     string documentRefUid FK
-    string typeObjet
+    string amendementRefUid FK
+    string dateScrutin
+    text   objet
     string code
     int    pour
     int    contre
+    int    abstentions
   }
   groupesVotants {
     string uid PK
@@ -219,6 +232,7 @@ erDiagram
     string positionMajoritaire
     int    pour
     int    contre
+    int    abstentions
   }
   auteursDocument {
     string uid PK
@@ -230,24 +244,28 @@ erDiagram
     string uid PK
     string documentRefUid FK
     string acteurRefUid FK
+    string dateCosignature
   }
 
   dossiers    ||--o{ documents             : "dossierRefUid"
   dossiers    ||--o{ amendements           : "dossierRefUid"
+  dossiers    ||--o{ scrutins              : "dossierRefUid"
   documents   ||--o{ amendements           : "documentRefUid"
-  acteurs     ||--o{ amendements           : "acteurRefUid"
-  organes     ||--o{ amendements           : "groupePolitiqueRefUid"
-  acteurs     ||--o{ mandats               : "acteurRefUid"
-  organes     ||--o{ mandats               : "organeRefUid"
-  acteurs     ||--o{ documents             : "auteurPrincipalUid"
-  documents   ||--o{ auteursDocument       : "documentRefUid"
-  acteurs     ||--o{ auteursDocument       : "acteurRefUid"
-  documents   ||--o{ coSignatairesDocument : "documentRefUid"
-  acteurs     ||--o{ coSignatairesDocument : "acteurRefUid"
-  amendements ||--o{ scrutins              : "amendementRefUid"
   documents   ||--o{ scrutins              : "documentRefUid"
-  scrutins    ||--o{ groupesVotants        : "scrutinRefUid"
+  documents   ||--o{ auteursDocument       : "documentRefUid"
+  documents   ||--o{ coSignatairesDocument : "documentRefUid"
+  acteurs     ||--o{ documents             : "auteurPrincipalUid"
+  acteurs     ||--o{ amendements           : "acteurRefUid"
+  acteurs     ||--o{ mandats               : "acteurRefUid"
+  acteurs     ||--o{ auteursDocument       : "acteurRefUid"
+  acteurs     ||--o{ coSignatairesDocument : "acteurRefUid"
+  organes     ||--o{ acteurs               : "groupeParlementaireUid"
+  organes     ||--o{ amendements           : "groupePolitiqueRefUid"
+  organes     ||--o{ mandats               : "organeRefUid"
   organes     ||--o{ groupesVotants        : "organeRefUid"
+  amendements ||--o{ scrutins              : "amendementRefUid"
+  scrutins    ||--o{ amendements           : "scrutinRefUid"
+  scrutins    ||--o{ groupesVotants        : "scrutinRefUid"
 ```
 
 Le lien **amendement ↔ scrutin** est natif, et dans les deux sens : `scrutins.amendementRefUid`
