@@ -30,10 +30,10 @@ class Amendement(Base):
     exposeSommaire: Mapped[str | None] = mapped_column(Text)
     dispositif: Mapped[str | None] = mapped_column(Text)
 
-    # --- Auteur / signataires ---
-    acteurRefUid: Mapped[str | None]
-    groupePolitiqueRefUid: Mapped[str | None]
-    organeRefUid: Mapped[str | None]
+    # --- Auteur / signataires (références molles indexées) ---
+    acteurRefUid: Mapped[str | None] = mapped_column(index=True)
+    groupePolitiqueRefUid: Mapped[str | None] = mapped_column(index=True)
+    organeRefUid: Mapped[str | None] = mapped_column(index=True)
     typeAuteur: Mapped[str | None]
     nomRepresentation: Mapped[str | None]
     signatairesLibelle: Mapped[str | None]
@@ -43,9 +43,9 @@ class Amendement(Base):
     divisionArticleDesignation: Mapped[str | None]
     alineaDesignation: Mapped[str | None]
 
-    # --- Rattachement (références molles vers d'autres entités de l'API) ---
-    dossierRefUid: Mapped[str | None]
-    documentRefUid: Mapped[str | None]
+    # --- Rattachement (références molles indexées vers d'autres entités de l'API) ---
+    dossierRefUid: Mapped[str | None] = mapped_column(index=True)
+    documentRefUid: Mapped[str | None] = mapped_column(index=True)
     etapeLegislativeRefUid: Mapped[str | None]
     codeEtape: Mapped[str | None]
     seanceRefUid: Mapped[str | None]

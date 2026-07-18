@@ -36,11 +36,11 @@ class Acteur(Base):
     catSocPro: Mapped[str | None]
     famSocPro: Mapped[str | None]
 
-    # --- Rattachements (références molles) ---
-    groupeParlementaireUid: Mapped[str | None]
-    mandatPrincipalUid: Mapped[str | None]
-    circonscriptionUid: Mapped[str | None]
-    commissionPermanenteRefUid: Mapped[str | None]
+    # --- Rattachements (références molles indexées) ---
+    groupeParlementaireUid: Mapped[str | None] = mapped_column(index=True)
+    mandatPrincipalUid: Mapped[str | None] = mapped_column(index=True)
+    circonscriptionUid: Mapped[str | None] = mapped_column(index=True)
+    commissionPermanenteRefUid: Mapped[str | None] = mapped_column(index=True)
     fonctionCommissionPermanente: Mapped[str | None]
     placeHemicycle: Mapped[str | None]
 
