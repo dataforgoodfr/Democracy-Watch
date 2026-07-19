@@ -1,5 +1,6 @@
 from models.acteur import Acteur  # noqa: F401
 from models.amendement import Amendement  # noqa: F401
+from models.amendement_mention import AmendementMention  # noqa: F401
 from models.auteur_document import AuteurDocument  # noqa: F401
 from models.cosignataire_document import CoSignataireDocument  # noqa: F401
 from models.document import Document  # noqa: F401
