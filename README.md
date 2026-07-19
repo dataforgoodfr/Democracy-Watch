@@ -273,3 +273,52 @@ pointe vers l'amendement tranché par le scrutin, et `amendements.scrutinRefUid`
 qui a tranché l'amendement. Le second est le plus large (~11 600 amendements contre ~6 800),
 un même scrutin pouvant trancher plusieurs amendements identiques. La jointure reste clairsemée :
 la plupart des amendements sont tranchés à main levée, sans scrutin public.
+
+# Analyse : détection des mentions de collaboration externe
+
+Objectif : repérer les amendements dont l'exposé sommaire déclare une collaboration ou une
+inspiration avec une **entité externe** (lobby, syndicat, association, entreprise, fédération
+professionnelle, ONG…) — formulations du type « travaillé avec… », « en concertation avec… »,
+« inspiré de… ».
+
+Le détecteur (`analysis/detect_mentions_regex.py`) fonctionne par expressions régulières :
+déterministe, instantané et sans coût, il matche des familles de formulations calibrées sur
+le corpus réel, avec des exclusions contextuelles (acteurs publics ou parlementaires, référents
+textuels type « proposé par le texte ») pour limiter les faux positifs.
+
+## Lancer une analyse
+
+La base doit être alimentée au préalable (table `amendements`, voir les sections ETL ci-dessus).
+
+```bash
+# Tout le corpus, résultats en JSONL uniquement
+just detect-mentions-regex
+
+# + écriture des mentions dans la table amendement_mentions
+just detect-mentions-regex --persist
+
+# Sur un sous-ensemble
+just detect-mentions-regex --limit 100
+
+# Équivalent sans just :
+uv run python -m analysis.detect_mentions_regex --persist
+```
+
+## Sorties
+
+- **JSONL brut** : `analysis/output/mentions_regex.jsonl` (une ligne par amendement, dossier
+  gitignoré), plus un récap console des formulations rencontrées et de leur fréquence.
+- **Base** (avec `--persist`) : table `amendement_mentions`, une ligne par mention détectée
+  (`amendementUid`, `citation`, `formulation`, `modele='regex:v1'`, `createdAt`). L'écriture est
+  idempotente par amendement et scopée au tag `modele='regex:v1'` : les lignes produites par
+  d'autres détecteurs (ex. un LLM) ne sont jamais touchées.
+- Le repérage regex ne remplit ni `entite`, ni `typeEntite`, ni `externe` : identifier et
+  qualifier l'entité demande une analyse sémantique (prévue dans une itération ultérieure).
+
+## Tables d'analyse et rebuild
+
+`amendement_mentions` est une **table d'analyse** : elle n'est pas listée dans `ETL_TABLES`
+(`etl/database.py`) et **survit donc à un `db-rebuild`**, contrairement à `amendements`/`dossiers`
+qui sont détruites puis rechargées. Sa colonne `amendementUid` est une référence *molle* vers
+`amendements.uid` (pas de `ForeignKey`), afin qu'aucune contrainte ne bloque le drop de la table
+ETL. Pour ajouter une nouvelle analyse, créer un modèle sur ce principe (hors `ETL_TABLES`).
