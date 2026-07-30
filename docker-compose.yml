@@ -10,5 +10,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
 
+  # Interface web d'exploration de la base, accessible sur http://localhost:8081
+  pgweb:
+    image: sosedoff/pgweb
+    ports:
+      - "8081:8081"
+    environment:
+      # `db` est le nom du service Postgres ci-dessus (résolu via le réseau compose).
+      DATABASE_URL: postgres://postgres:postgres@db:5432/ipolitics?sslmode=disable
+    depends_on:
+      - db
+    restart: unless-stopped
+
 volumes:
   postgres_data:
