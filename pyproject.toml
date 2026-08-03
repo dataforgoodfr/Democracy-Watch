@@ -10,7 +10,7 @@ dependencies = [
     "psycopg[binary]>=3.3.4",
     "sqlalchemy>=2.0.51",
     "duckdb>=1.5.5",
-    "numpy>=2.5.1",
+    "numpy>=2.0,<2.5",
     "sentence-transformers>=5.6.1",
 ]
 

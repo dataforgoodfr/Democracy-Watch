@@ -5,6 +5,9 @@ from dotenv import load_dotenv
 from etl.database import create_db
 from etl.download import run_download
 from etl.etl import run_etl
+from etl.embed import run_embed
+from etl.embedding import DEFAULT_BACKEND
+from etl.vectordb import reset_db as reset_vector_db
 
 
 def run(parser):
@@ -19,6 +22,10 @@ def run(parser):
     elif argv.rebuild_db_run_etl:
         create_db()
         run_etl()
+    elif argv.rebuild_vector_database:
+        reset_vector_db()
+    elif argv.embed:
+        run_embed(backend_name=argv.backend, model=argv.model)
     else:
         parser.print_usage()
 
@@ -51,6 +58,27 @@ def get_argv_parser():
         "--rebuild-db-run-etl",
         action="store_true",
         help="Rebuild the database and run the etl",
+    )
+    parser.add_argument(
+        "--rebuild-vector-database",
+        action="store_true",
+        help="Drop the DuckDB vector tables (they are recreated by --embed, at the "
+        "dimension of the model in use)",
+    )
+    parser.add_argument(
+        "--embed",
+        action="store_true",
+        help="Compute and store amendement embeddings (defaults to the local F2LLM model via sentence-transformers)",
+    )
+    parser.add_argument(
+        "--backend",
+        default=DEFAULT_BACKEND,
+        help="Embedding backend: 'sentence-transformers' (local GPU, default) or 'ollama'",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Override the embedding model id (default depends on the backend)",
     )
     return parser
 
