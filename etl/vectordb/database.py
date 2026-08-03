@@ -103,13 +103,19 @@ def get_tables_definition() -> list[VectorTable]:
     return list(VECTOR_TABLES.values())
 
 
-def create_db() -> dict[str, VectorTable]:
-    """Détruit les tables vectorielles pour repartir d'une base vide."""
-    print("Creating vector DB")
+def reset_db() -> dict[str, VectorTable]:
+    """Détruit les tables vectorielles pour repartir d'une base vide.
+
+    Les tables sont recréées à la bonne dimension par `--embed` (via
+    :meth:`EmbeddingStore.ensure_table`), qui connaît la dimension du modèle.
+    """
     tables = get_tables_definition()
-    print([table.name for table in tables])
+    print(f"Dropping vector tables: {[t.name for t in tables]}")
     with get_connection(read_only=False) as con:
         for table in tables:
             con.execute(table.drop_sql())
-    print(f"Vector db was created ({get_duckdb_path()})")
+    print(
+        f"Vector tables dropped ({get_duckdb_path()}). "
+        "Run `just embed` to re-embed."
+    )
     return VECTOR_TABLES

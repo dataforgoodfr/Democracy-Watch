@@ -23,7 +23,7 @@ from etl.vectordb.config import (
 )
 from etl.vectordb.database import (
     VectorDimensionMismatch,
-    create_db,
+    reset_db,
     get_connection,
     get_tables_definition,
     table_dimension,
@@ -38,7 +38,7 @@ __all__ = [
     "VECTOR_TABLES",
     "VectorDimensionMismatch",
     "VectorTable",
-    "create_db",
+    "reset_db",
     "get_connection",
     "get_duckdb_path",
     "is_duckdb_read_only",
