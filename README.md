@@ -112,6 +112,13 @@ uv run main.py --embed
 just embed
 ```
 
+Pour ne traiter que les amendements d'un seul dossier (utile pour itérer sur un
+texte précis sans réembedder tout le corpus) :
+
+```bash
+just embed --dossier DLR5L16N47129
+```
+
 ## Comment marche l'ETL
 
 Après avoir exécuté `just download`, les données de l'API des tricoteuses sont sauvegardées dans le dossier `./data/` sous la forme de fichiers JSON.
