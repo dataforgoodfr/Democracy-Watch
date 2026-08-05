@@ -96,6 +96,21 @@ uv run main.py -a
 just all
 ```
 
+#### Recréer la DB vectorielle (DuckDB)
+
+```bash
+uv run main.py --rebuild-vector-database
+# ou
+just vector-db-rebuild
+```
+
+#### Calculer les embeddings
+
+```bash
+uv run main.py --embed
+# ou
+just embed
+```
 
 ## Comment marche l'ETL
 

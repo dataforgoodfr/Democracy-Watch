@@ -26,3 +26,13 @@ psql:
 # Extra flags pass through, e.g.: just detect-mentions-regex --persist --limit 100
 detect-mentions-regex *ARGS:
   uv run python -m analysis.detect_mentions_regex {{ARGS}}
+
+# Drop the DuckDB vector tables
+vector-db-rebuild:
+  uv run main.py --rebuild-vector-database
+
+# Embed the amendments into the vector database
+# Extra flags pass through, e.g.: just embed --backend foo --model bar
+embed *ARGS:
+  uv run main.py --embed {{ARGS}}
+
