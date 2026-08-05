@@ -17,13 +17,18 @@ def _text_for(amendement):
     return f"{expose}".strip()
 
 
-def load_amendements():
-    """Load data from Postgres."""
+def load_amendements(dossier=None):
+    """Load data from Postgres.
+
+    When `dossier` is given, only the amendements attached to that dossier
+    (`amendements.dossierRefUid`) are loaded.
+    """
     engine = get_engine()
+    stmt = select(Amendement.uid, Amendement.exposeSommaire, Amendement.dispositif)
+    if dossier:
+        stmt = stmt.where(Amendement.dossierRefUid == dossier)
     with Session(engine) as session:
-        rows = session.execute(
-            select(Amendement.uid, Amendement.exposeSommaire, Amendement.dispositif)
-        ).mappings()
+        rows = session.execute(stmt).mappings()
         return [dict(row) for row in rows]
 
 
@@ -49,8 +54,12 @@ def embed_into(store, backend, amendements):
         yield min(i + COMMIT_EVERY, total), total
 
 
-def run_embed(backend_name=DEFAULT_BACKEND, model=None):
-    amendements = load_amendements()
+def run_embed(backend_name=DEFAULT_BACKEND, model=None, dossier=None):
+    amendements = load_amendements(dossier)
+    if dossier:
+        print(f"\tdossier={dossier}")
+        if not amendements:
+            raise SystemExit(f"No amendement attached to dossier {dossier}")
 
     backend = create_backend(backend_name, **({"model": model} if model else {}))
     print(f"\tbackend={backend.name} dim={backend.dimension}")
