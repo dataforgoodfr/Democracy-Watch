@@ -1,4 +1,3 @@
-from models.acte_legislatif import ActeLegislatif  # noqa: F401
 from models.acteur import Acteur  # noqa: F401
 from models.amendement import Amendement  # noqa: F401
 from models.amendement_mention import AmendementMention  # noqa: F401

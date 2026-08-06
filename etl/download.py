@@ -19,7 +19,6 @@ LEGISLATURE = 17
 #              moment de l'analyse.
 APIS = {
     "dossiers": True,
-    "actesLegislatifs": True,
     "documents": True,
     "amendements": True,
     "acteurs": False,
