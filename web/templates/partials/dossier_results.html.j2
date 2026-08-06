@@ -1,0 +1,55 @@
+{% import "macros/ui.html.j2" as ui %}
+{#
+  Cible d'échange HTMX de la page d'accueil. Rendue seule quand la requête porte
+  `HX-Request`, et incluse dans la page complète sinon : recherche, filtre et
+  pagination produisent donc exactement le même balisage qu'un rechargement.
+#}
+<div id="dossier-results">
+  <div style="display:flex;align-items:baseline;gap:12px;padding:14px 0">
+    <h6 style="margin:0">{{ total | fr_number }} dossier{{ total | pluralize }}</h6>
+    <span style="font-size:12px;color:var(--color-neutral-600)">triés par date du dernier acte</span>
+  </div>
+
+  {% if not dossiers %}
+    <div style="padding:24px 0;font-size:13px;color:var(--color-neutral-600)">
+      Aucun dossier ne correspond à ces critères.
+    </div>
+  {% else %}
+    <div style="display:grid;gap:2px;background:var(--color-divider)">
+      {% for d in dossiers %}
+        <a
+          href="/dossiers/{{ d.uid }}"
+          style="display:grid;grid-template-columns:120px 1fr 220px 130px 90px;gap:20px;align-items:center;padding:18px 20px;text-decoration:none;color:inherit;{% if loop.first %}background:var(--color-surface);border-left:4px solid var(--color-accent){% else %}background:var(--color-bg){% endif %}"
+        >
+          <span style="font:600 12px ui-monospace,monospace;color:var(--color-neutral-700)">{{ d.uid }}</span>
+          <span>
+            {# La recherche met en évidence le terme dans le titre ; `highlight`
+               échappe le texte de la base avant d'insérer le balisage. #}
+            <span style="font:800 18px/1.25 var(--font-heading);display:block">{{ highlight(d.titre, params.q) }}</span>
+            <span style="font-size:12px;color:var(--color-neutral-700)">
+              {{ d.libelleProcedure }}{% if d.dateDernierActe %} · {{ d.dateDernierActe | fr_date }}{% endif %}
+            </span>
+          </span>
+          <span style="font-size:13px">
+            {% set mentions = d.mention_count | as_int %}
+            {% if mentions %}
+              <span style="font-weight:600;color:var(--color-accent)">{{ mentions | fr_number }}</span>
+              mention{{ mentions | pluralize }} de collaboration
+            {% else %}
+              <span style="color:var(--color-neutral-600)">aucune mention</span>
+            {% endif %}
+          </span>
+          <span>
+            <span class="tag {{ outcome_tag_class(statut_outcome(d.statut)) }}">{{ d.statut or 'Inconnu' }}</span>
+          </span>
+          <span style="text-align:right">
+            <span style="font:800 20px/1 var(--font-heading)">{{ d.amendment_count | fr_number }}</span>
+            <span style="display:block;font-size:10px;color:var(--color-neutral-600)">amendements</span>
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+
+    {{ ui.pagination(page, total, limit, '#dossier-results', url_for_page, range_label) }}
+  {% endif %}
+</div>

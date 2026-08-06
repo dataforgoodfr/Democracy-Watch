@@ -1,0 +1,132 @@
+{% extends "base.html.j2" %}
+{% import "macros/ui.html.j2" as ui %}
+{% import "macros/vote.html.j2" as vote %}
+{% import "macros/amendment.html.j2" as amendment %}
+
+{% block title %}Amendement n° {{ amendement.numeroLong }} — Democracy Watch{% endblock %}
+
+{# Mise en page `explorer` : colonne d'historique à gauche, pas de barre de nav. #}
+{% block nav %}{% endblock %}
+
+{% block content %}
+{#
+  `data-dw-entry` est lu par `dwHistory().init()` dans dw.js : la poussée dans
+  l'historique se fait donc à l'initialisation du magasin, ce qui garantit une
+  seule source de vérité : l'entrée poussée est exactement celle que la page
+  affiche, sans second endroit où la décrire.
+#}
+<div
+  data-dw-entry='{{ history_entry | tojson }}'
+  style="display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh"
+>
+  {{ amendment.history_sidebar(amendement.uid) }}
+
+  <div style="min-width:0">
+    {% call ui.divider_grid(cols='minmax(0,1fr) 400px') %}
+      <!-- Colonne de lecture -->
+      <div style="background:var(--color-bg);padding:20px 40px 40px">
+        <div style="font:12px/1 var(--font-body);color:var(--color-neutral-600);margin-bottom:18px">
+          <a href="/" style="color:inherit;text-decoration:none">Dossiers</a>
+          / <a href="/dossiers/{{ amendement.dossierRefUid }}" style="color:inherit;text-decoration:none">{{ amendement.dossierRefUid }}</a>
+          / <a href="/dossiers/{{ amendement.dossierRefUid }}/amendements" style="color:inherit;text-decoration:none">amendements</a>
+          / <span style="font:600 12px ui-monospace,monospace;color:var(--color-text)">{{ amendement.numeroLong }}</span>
+        </div>
+
+        <div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap">
+          <h2 style="margin:0;font-size:34px">Amendement n° {{ amendement.numeroLong }}</h2>
+          <span class="tag {{ outcome_tag_class(sort_outcome(amendement.sortAmendement)) }}">{{ amendement.sortAmendement or '—' }}</span>
+          <span class="tag tag-neutral">{{ amendement.codeEtape or 'Hémicycle' }}</span>
+        </div>
+
+        {% call ui.divider_grid(cols='repeat(4,1fr)', border=true, style='margin:22px 0 0') %}
+          <div style="background:var(--color-bg);padding:12px 14px">
+            {% call ui.micro_label() %}Auteur·e{% endcall %}
+            {# Jointure externe : nul pour un amendement du gouvernement ou d'une
+               commission, auquel cas la ligne reste vide plutôt que « None ». #}
+            <div style="font:600 14px/1.3 var(--font-body);margin-top:6px">{{ amendement.author_name or 'Non renseigné' }}</div>
+            <div style="font-size:11px;color:var(--color-neutral-700)">{{ amendement.group_abbrev or '' }}</div>
+          </div>
+          <div style="background:var(--color-bg);padding:12px 14px">
+            {% call ui.micro_label() %}Cosignataires{% endcall %}
+            <div style="font:600 14px/1.3 var(--font-body);margin-top:6px">{{ amendement.nombreCoSignataires | as_int }} députés</div>
+          </div>
+          <div style="background:var(--color-bg);padding:12px 14px">
+            {% call ui.micro_label() %}Objet visé{% endcall %}
+            <div style="font:600 14px/1.3 var(--font-body);margin-top:6px">{{ amendement.divisionArticleDesignation }}</div>
+            <div style="font-size:11px;color:var(--color-neutral-700)">{% if amendement.alineaDesignation %}alinéa {{ amendement.alineaDesignation }}{% endif %}</div>
+          </div>
+          <div style="background:var(--color-bg);padding:12px 14px">
+            {% call ui.micro_label() %}Dates{% endcall %}
+            <div style="font:600 14px/1.3 var(--font-body);margin-top:6px">Dépôt {{ amendement.dateDepot | fr_date }}</div>
+            <div style="font-size:11px;color:var(--color-neutral-700)">Sort {{ amendement.dateSort | fr_date }}</div>
+          </div>
+        {% endcall %}
+
+        <hr class="hr" style="margin:28px 0 20px">
+
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <h6 style="margin:0">Exposé sommaire</h6>
+          {% if mentions | length > 1 %}
+            <span style="font-size:11px;color:var(--color-neutral-600)">{{ mentions | length }} mentions détectées</span>
+          {% endif %}
+        </div>
+        <div style="max-width:62ch;margin-top:14px;font-size:15px;line-height:1.65">
+          {% set primary = mentions[0] if mentions else none %}
+          {% if primary %}
+            {% set parts = split_citation(amendement.exposeSommaire, primary.citation) %}
+            {% if parts.found %}
+              <p style="white-space:pre-wrap">{{ parts.before }}</p>
+              {% call amendment.mention_callout(primary) %}
+                {# La citation est échappée par `highlight` avant l'ajout du <strong>. #}
+                {{ highlight(primary.citation, primary.formulation, 'background:var(--color-accent-200);padding:1px 3px') }}
+              {% endcall %}
+              <p style="white-space:pre-wrap">{{ parts.after }}</p>
+            {% else %}
+              {# Citation absente de l'exposé (texte retouché depuis la détection) :
+                 l'exposé est rendu tel quel et la mention affichée à part. #}
+              <p style="white-space:pre-wrap">{{ amendement.exposeSommaire }}</p>
+              {% call amendment.mention_callout(primary) %}
+                {{ highlight(primary.citation, primary.formulation, 'background:var(--color-accent-200);padding:1px 3px') }}
+              {% endcall %}
+            {% endif %}
+          {% else %}
+            <p style="white-space:pre-wrap">{{ amendement.exposeSommaire }}</p>
+          {% endif %}
+
+          {# Seule `mentions[0]` était rendue auparavant : les détections
+             supplémentaires sur le même amendement étaient invisibles. #}
+          {% if mentions | length > 1 %}
+            <hr class="hr" style="margin:20px 0 14px">
+            {% call ui.micro_label() %}Autres mentions détectées{% endcall %}
+            <div style="display:grid;gap:10px;margin-top:10px">
+              {% for m in mentions[1:] %}
+                {% call amendment.mention_callout(m) %}{{ m.citation }}{% endcall %}
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <hr class="hr" style="margin:28px 0 20px">
+
+        <h6>Dispositif</h6>
+        <div style="max-width:62ch;margin-top:14px;font-size:15px;line-height:1.65;background:var(--color-surface);padding:18px 20px;border-left:2px solid var(--color-text)">
+          <p style="margin:0;white-space:pre-wrap">{{ amendement.dispositif }}</p>
+        </div>
+      </div>
+
+      <!-- Colonne d'analyse -->
+      <div style="background:var(--color-surface);padding:20px 28px 40px;display:flex;flex-direction:column;gap:0">
+        {% if scrutin %}
+          {{ vote.scrutin_block(scrutin, groupes_votants) }}
+        {% else %}
+          {{ vote.no_scrutin_state(amendement.sortAmendement, amendement.dateSort) }}
+        {% endif %}
+
+        <hr class="hr">
+
+        {{ amendment.similar_list(similars, similarity_available) }}
+      </div>
+    {% endcall %}
+  </div>
+</div>
+{% endblock %}

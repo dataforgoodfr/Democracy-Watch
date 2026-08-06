@@ -1,0 +1,50 @@
+{% extends "base.html.j2" %}
+{% import "macros/charts.html.j2" as charts %}
+{% set nav_section = 'scrutins' %}
+
+{% block title %}Scrutin public n° {{ scrutin.numero }} — Democracy Watch{% endblock %}
+
+{% block content %}
+{% set outcome = scrutin_outcome(scrutin) %}
+<div style="display:flex;justify-content:center;padding:40px 24px">
+  <div style="width:660px;background:var(--color-bg);border:2px solid var(--color-divider);padding:26px 30px 30px">
+    <h6>Scrutin public n° {{ scrutin.numero }} · {{ scrutin.dateScrutin | fr_long_date }}</h6>
+    <h3 style="margin:10px 0 4px">{{ scrutin.titre or scrutin.objet }}</h3>
+
+    <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:6px;flex-wrap:wrap">
+      {# Le verdict vient de `scrutin_outcome()`, qui lit `scrutins.code` : un test
+         de sous-chaîne sur « adopt » dans le libellé attrapait aussi
+         « n'a pas adopté » et taguait les rejets comme adoptés. #}
+      <span class="tag {{ outcome_tag_class(outcome) }}">
+        {% if outcome == 'adopted' %}Adopté{% elif outcome == 'rejected' %}Rejeté{% else %}Inconnu{% endif %}
+      </span>
+      <span style="font-size:12px;color:var(--color-neutral-700)">{{ scrutin.libelle }}</span>
+      <span style="font-size:12px;color:var(--color-neutral-700)">
+        {{ scrutin.nombreVotants | fr_number }} votants · {{ scrutin.suffragesExprimes | fr_number }} suffrages exprimés
+      </span>
+    </div>
+
+    <div style="margin:8px -6px 0">{{ charts.hemicycle(groupes_votants) }}</div>
+
+    <div style="display:flex;gap:18px;justify-content:center;font-size:12px;color:var(--color-neutral-700);margin-top:2px">
+      <span style="display:flex;gap:6px;align-items:center">
+        <span style="width:11px;height:11px;border-radius:50%;background:#1d3461"></span>Pour {{ scrutin.pour }}
+      </span>
+      <span style="display:flex;gap:6px;align-items:center">
+        <span style="width:11px;height:11px;border-radius:50%;background:#ec3013"></span>Contre {{ scrutin.contre }}
+      </span>
+      <span style="display:flex;gap:6px;align-items:center">
+        <span style="width:11px;height:11px;border-radius:50%;background:#9c9898"></span>Abstention {{ scrutin.abstentions }}
+      </span>
+    </div>
+
+    <hr class="hr">
+    <div style="font-size:12px;color:var(--color-neutral-700)">
+      Un siège = un député, positionné à sa place réelle dans l'hémicycle. Le vote de
+      chaque groupe n'étant connu qu'en agrégat (pour/contre/abstention), la couleur d'un
+      siège donné n'indique pas le vote de son occupant : les votes nominatifs ne sont pas
+      publiés dans ce jeu de données.
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{#
+  Barre de navigation. `nav_section`, fourni par la vue, marque l'entrée active.
+
+  Les quatre sections sans route d'index restent du texte inerte, pas des liens :
+  /amendements, /mentions, /scrutins et /deputes n'ont que des pages `[uid]`, si
+  bien que lier les chemins nus envoyait 4 des 5 entrées vers un 404.
+#}
+{% set nav_items = [
+  {'label': 'Dossiers', 'to': '/', 'key': 'dossiers'},
+  {'label': 'Amendements', 'to': none, 'key': 'amendements'},
+  {'label': 'Mentions externes', 'to': none, 'key': 'mentions'},
+  {'label': 'Scrutins', 'to': none, 'key': 'scrutins'},
+  {'label': 'Députés', 'to': none, 'key': 'deputes'},
+] %}
+<nav class="nav" style="background:var(--color-bg)">
+  <a href="/" class="nav-brand">DEMOCRACY&nbsp;WATCH</a>
+
+  {% for item in nav_items %}
+    {% if item.to %}
+      <a
+        href="{{ item.to }}"
+        {% if nav_section is defined and nav_section == item.key %}aria-current="page"{% endif %}
+      >{{ item.label }}</a>
+    {% else %}
+      <span
+        aria-disabled="true"
+        title="{{ item.label }} — vue d'ensemble à venir"
+        style="color:var(--color-neutral-500);cursor:not-allowed"
+      >{{ item.label }}</span>
+    {% endif %}
+  {% endfor %}
+
+  <span class="tag tag-outline">L17</span>
+</nav>

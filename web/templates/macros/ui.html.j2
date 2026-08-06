@@ -1,0 +1,138 @@
+{#
+  Briques d'interface communes. Les macros `call`ables jouent le rôle d'un enfant
+  passé au composant : `{% call stat_cell(accent=true) %}…{% endcall %}` insère son
+  contenu là où `{{ caller() }}` apparaît dans la macro.
+#}
+
+{% macro micro_label(accent=false) -%}
+<span class="micro-label"{% if accent %} style="color:var(--color-accent-700)"{% endif %}>{{ caller() }}</span>
+{%- endmacro %}
+
+
+{% macro divider_grid(cols=none, border=false, surface=false, style='') -%}
+{#
+  Grille dont les 2px d'écart laissent voir le fond « divider » : les cellules
+  reposent sur le fond de page, l'écart devient donc une règle. Les enfants
+  doivent porter leur propre fond, sinon la grille est uniformément grise.
+#}
+<div
+  class="divider-grid{% if surface %} surface{% endif %}"
+  style="{% if cols %}grid-template-columns:{{ cols }};{% endif %}{% if border %}border:2px solid var(--color-divider);{% endif %}{{ style }}"
+>{{ caller() }}</div>
+{%- endmacro %}
+
+
+{% macro stat_cell(value, label, accent=false, surface=false, size=34) -%}
+<div style="background:{{ 'var(--color-surface)' if surface else 'var(--color-bg)' }};padding:18px 20px">
+  <div style="font:800 {{ size }}px/1 var(--font-heading);{% if accent %}color:var(--color-accent){% endif %}">{{ value }}</div>
+  <div style="font-size:11px;color:var(--color-neutral-700);margin-top:4px">{{ label }}</div>
+</div>
+{%- endmacro %}
+
+
+{% macro tag(label, variant='neutral', outlined=false, title='') -%}
+<span
+  class="tag tag-{{ variant }}"
+  {% if title %}title="{{ title }}"{% endif %}
+  {% if outlined %}style="border:1px solid var(--color-divider)"{% endif %}
+>{{ label }}</span>
+{%- endmacro %}
+
+
+{% macro seg_control(name, value, options, target, url, include='', push=true) -%}
+{#
+  Sélecteur segmenté. Chaque option est un `hx-get` vers la même page avec le seul
+  paramètre changé : le choix atterrit dans l'URL, donc il survit à un rechargement
+  et reste partageable. Le style « sélectionné » de `ds.css` s'appuyant sur
+  `input:checked`, l'input est conservé plutôt que remplacé par un lien.
+#}
+<div class="seg" role="group">
+  {% for opt in options %}
+    <label class="seg-opt">
+      <input
+        type="radio"
+        name="{{ name }}"
+        value="{{ opt.value }}"
+        {% if value == opt.value %}checked{% endif %}
+        hx-get="{{ url }}{{ '&' if '?' in url else '?' }}{{ name }}={{ opt.value }}"
+        hx-target="{{ target }}"
+        {% if include %}hx-include="{{ include }}"{% endif %}
+        {% if push %}hx-push-url="true"{% endif %}
+      >
+      {{ opt.label }}
+    </label>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+
+{% macro facet_chips(chips, target, hint='') -%}
+{#
+  Pastilles des filtres actifs. Retirer une facette est un `hx-get` vers l'URL sans
+  elle : `chip.remove_url` est calculé côté serveur, seul endroit qui connaisse
+  l'ensemble des paramètres actifs.
+#}
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span class="micro-label" style="margin-right:4px">Filtres</span>
+  {% for chip in chips %}
+    <a
+      class="tag {{ 'tag-accent' if chip.accent else 'tag-neutral' }}"
+      href="{{ chip.remove_url }}"
+      hx-get="{{ chip.remove_url }}"
+      hx-target="{{ target }}"
+      hx-push-url="true"
+      style="cursor:pointer;text-decoration:none{% if not chip.accent %};border:1px solid var(--color-divider){% endif %}"
+      title="Retirer ce filtre"
+    >{{ chip.label }} ✕</a>
+  {% endfor %}
+  {% if caller is defined %}{{ caller() }}{% endif %}
+  {% if hint %}
+    <span style="margin-left:auto;font-size:12px;color:var(--color-neutral-600)">{{ hint }}</span>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+
+{% macro pagination(page, total, page_size, target, url_for_page, label=none) -%}
+{#
+  `url_for_page` est une fonction rendue par la vue (elle seule sait quels
+  paramètres préserver). Bornes calculées côté serveur : la page demandée peut
+  dépasser le dernier index si les filtres ont changé entre deux requêtes.
+#}
+{% set last = [1, (total / page_size) | round(0, 'ceil') | int] | max %}
+{% if last > 1 %}
+  <div style="display:flex;align-items:center;gap:12px;padding:12px 0">
+    {% if page > 1 %}
+      <a class="btn btn-secondary" href="{{ url_for_page(page - 1) }}"
+         hx-get="{{ url_for_page(page - 1) }}" hx-target="{{ target }}" hx-push-url="true">← Précédent</a>
+    {% else %}
+      <span class="btn btn-secondary" aria-disabled="true" style="opacity:.45;cursor:not-allowed">← Précédent</span>
+    {% endif %}
+
+    <span style="font-size:12px;color:var(--color-neutral-700)">
+      {% if label %}{{ label }} · {% endif %}Page {{ page | fr_number }} / {{ last | fr_number }}
+    </span>
+
+    {% if page < last %}
+      <a class="btn btn-secondary" href="{{ url_for_page(page + 1) }}"
+         hx-get="{{ url_for_page(page + 1) }}" hx-target="{{ target }}" hx-push-url="true">Suivant →</a>
+    {% else %}
+      <span class="btn btn-secondary" aria-disabled="true" style="opacity:.45;cursor:not-allowed">Suivant →</span>
+    {% endif %}
+  </div>
+{% endif %}
+{#
+  Rien n'est rendu sur une seule page : les deux appelants affichent déjà leur
+  propre décompte au-dessus du tableau, un « N résultats » de plus ici le
+  répéterait.
+#}
+{%- endmacro %}
+
+
+{% macro outcome_tag(label, outcome) -%}
+{#
+  Pastille de sort. La classe vient d'`outcome.py`, jamais d'un test de
+  sous-chaîne dans le gabarit — « n'a pas adopté » contient « adopté ».
+#}
+{% if label %}<span class="tag {{ outcome_tag_class(outcome) }}">{{ label }}</span>{% endif %}
+{%- endmacro %}

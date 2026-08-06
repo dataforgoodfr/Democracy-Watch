@@ -1,0 +1,182 @@
+{% import "macros/ui.html.j2" as ui %}
+
+{% macro mention_callout(mention) -%}
+{#
+  Le contenu vient du bloc appelant : la mention principale y passe la citation
+  avec sa formulation mise en évidence, les mentions suivantes la citation brute.
+#}
+<div class="mention-callout">
+  {% call ui.micro_label(accent=true) %}Mention de collaboration détectée · formulation « {{ mention.formulation }} »{% endcall %}
+  <p style="margin:8px 0 0;font-size:15px;line-height:1.65">{{ caller() }}</p>
+</div>
+{%- endmacro %}
+
+
+{% macro similar_list(similars, available) -%}
+{#
+  Le seuil est un état client (curseur Alpine, persisté en localStorage) : toutes
+  les lignes sont rendues et filtrées par `x-show`, donc bouger le curseur ne
+  déclenche aucun aller-retour serveur.
+
+  Le score de l'API est un ratio 0..1 tandis que le seuil est un pourcentage :
+  `score * 100` est donc obligatoire dans la comparaison. Le filtre naïf
+  (`!score || score >= threshold`) laissait passer toutes les lignes.
+#}
+<div x-data="dwThreshold()">
+  <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <h6 style="margin:0">Amendements proches</h6>
+    <span style="font-size:10px;color:var(--color-neutral-600)">
+      ≥ <span x-text="threshold">70</span> % · non identiques
+    </span>
+  </div>
+
+  {% if available is false %}
+    {#
+      Sans embeddings, une liste vide ne veut pas dire « aucun voisin » mais
+      « impossible de les scorer » : le dire évite une conclusion fausse.
+    #}
+    <div style="font-size:11px;color:var(--color-neutral-600);margin-top:12px">
+      Similarité indisponible : les embeddings n'ont pas encore été calculés.
+    </div>
+  {% elif not similars %}
+    <div style="font-size:11px;color:var(--color-neutral-600);margin-top:12px">
+      Aucun autre amendement d'un autre groupe sur cet article.
+    </div>
+  {% else %}
+    {# Le meilleur score décide de l'état « aucun au-dessus du seuil », côté client
+       comme les lignes elles-mêmes : les deux réagissent au même curseur. #}
+    {% set best = (similars | map(attribute='score') | map('float') | max) * 100 %}
+    <div
+      style="font-size:11px;color:var(--color-neutral-600);margin-top:12px"
+      x-show="{{ best | round(2) }} < threshold"
+    >
+      {{ similars | length }} amendement{{ similars | length | pluralize }} sur cet article, aucun
+      au-dessus de <span x-text="threshold"></span> % de similarité.
+    </div>
+
+    <div style="display:grid;gap:2px;margin-top:12px">
+      {% for s in similars | sort(attribute='score', reverse=true) %}
+        <a
+          href="/amendements/{{ s.uid }}"
+          x-show="{{ (s.score | float * 100) | round(2) }} >= threshold"
+          style="background:var(--color-bg);padding:10px 12px;display:grid;grid-template-columns:1fr 44px;gap:8px;align-items:center;text-decoration:none;color:inherit"
+        >
+          <span>
+            <span style="font:600 12px ui-monospace,monospace">{{ s.numeroLong }}</span>
+            {# Champs issus de jointures externes : on n'affiche que ceux présents,
+               sinon la ligne se lit « None · None · Adopté ». #}
+            <span style="font-size:11px;color:var(--color-neutral-700);display:block">
+              {{ [s.group_abbrev, s.author_name, s.sortAmendement] | select | join(' · ') }}
+            </span>
+          </span>
+          <span style="font:800 14px/1 var(--font-heading);text-align:right;color:var(--color-accent)">{{ s.score | percent }}</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    <label style="display:block;margin-top:14px">
+      {% call ui.micro_label() %}Seuil de similarité{% endcall %}
+      <input
+        type="range" min="0" max="95" step="5"
+        x-model.number="threshold" @input="save()"
+        style="width:100%;margin-top:6px;accent-color:var(--color-accent)"
+      >
+    </label>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+
+{% macro history_sidebar(current_uid='') -%}
+{#
+  Colonne d'historique de la fiche amendement. Son habillage reprend celui de la
+  colonne de `dossier_amendements.html.j2` (largeur 260px, filet à droite, marque
+  cliquable, filets `hr`, compteur « N vus ») : les deux étaient écrites
+  séparément et avaient divergé. S'y ajoutent l'épinglage et le repère de la ligne
+  en cours, propres à cette page.
+
+  Le magasin vit dans `dw.js` (localStorage) : rien n'est rendu côté serveur ici,
+  donc aucune réconciliation entre un rendu serveur et un état client n'est
+  nécessaire.
+#}
+<div
+  {#
+    Guillemets simples obligatoires : `tojson` échappe `'`, `<`, `>` et `&`, mais
+    pas `"`. Entre guillemets doubles, la chaîne rendue refermait l'attribut et
+    Alpine, ne pouvant plus évaluer `x-data`, n'initialisait pas le composant —
+    la colonne restait donc vide quel que soit le contenu du localStorage.
+  #}
+  x-data='dwHistory({{ current_uid | tojson }})'
+  style="background:var(--color-surface);border-right:2px solid var(--color-divider);padding:20px 18px;display:flex;flex-direction:column;gap:18px;min-height:100%"
+>
+  <a href="/" style="font:800 15px/1 var(--font-heading);text-decoration:none;color:inherit">DEMOCRACY WATCH</a>
+  <hr class="hr" style="margin:0">
+
+  <div style="flex:1">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <h6 style="margin:0">Historique</h6>
+      <span style="font-size:10px;color:var(--color-neutral-600)"><span x-text="recent.length">0</span> vus</span>
+    </div>
+    <div x-show="!recent.length" style="font-size:11px;color:var(--color-neutral-600);margin-top:12px">
+      Ouvrez un amendement pour le retrouver ici.
+    </div>
+    <div style="display:grid;gap:2px;margin-top:12px">
+      <template x-for="e in recent" :key="e.uid">
+        {#
+          `:style` prend un objet et non une chaîne : la forme chaîne appelle
+          `setAttribute('style', …)` et écrase donc l'attribut `style` statique
+          — la ligne perdait son fond et sa grille `1fr 22px` (la pastille
+          passait sous le libellé au lieu de se placer à sa droite), et la
+          pastille perdait son `border:none;background:none`, d'où son allure de
+          bouton par défaut. La forme objet fusionne propriété par propriété.
+        #}
+        <div
+          style="background:var(--color-bg);display:grid;grid-template-columns:1fr 22px;align-items:center"
+          :style="{ borderLeft: currentUid === e.uid ? '3px solid var(--color-accent)' : '' }"
+        >
+          <a
+            :href="`/amendements/${e.uid}`"
+            style="padding:8px 10px;text-decoration:none;color:inherit;display:block;min-width:0"
+          >
+            <div style="font:600 12px ui-monospace,monospace" x-text="e.numeroLong"></div>
+            <div
+              style="font-size:11px;color:var(--color-neutral-700)"
+              x-text="currentUid === e.uid ? 'en cours de lecture' : relativeTime(e.visitedAt)"
+            ></div>
+          </a>
+          <button
+            type="button"
+            :title="e.pinned ? 'Désépingler' : 'Épingler'"
+            :aria-label="e.pinned ? 'Désépingler' : 'Épingler'"
+            style="border:none;background:none;cursor:pointer;font-size:11px;padding:4px;line-height:1"
+            :style="{ color: e.pinned ? 'var(--color-accent)' : 'var(--color-neutral-500)' }"
+            @click="pin(e.uid)"
+          >●</button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <template x-if="pinned.length">
+    <div>
+      <hr class="hr" style="margin:0 0 16px">
+      <h6 style="margin-bottom:10px">Épinglés</h6>
+      <template x-for="e in pinned" :key="e.uid">
+        <a
+          :href="`/amendements/${e.uid}`"
+          style="padding:8px 10px;background:var(--color-bg);border:1px solid var(--color-divider);text-decoration:none;color:inherit;display:block"
+        >
+          <div style="font:600 12px ui-monospace,monospace" x-text="e.numeroLong"></div>
+          <div style="font-size:11px;color:var(--color-neutral-700)" x-text="`${e.groupeAbbrev} · ${e.sort}`"></div>
+        </a>
+      </template>
+    </div>
+  </template>
+
+  {# « Vider l'historique » supprime aussi les épinglés : la variante qui les
+     préservait donnait l'impression que le bouton ne marchait pas. #}
+  <button class="btn btn-secondary btn-block" :disabled="!entries.length" @click="clear()">
+    Vider l'historique
+  </button>
+</div>
+{%- endmacro %}
