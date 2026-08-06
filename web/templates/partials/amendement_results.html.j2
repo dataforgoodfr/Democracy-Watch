@@ -1,0 +1,80 @@
+{% import "macros/ui.html.j2" as ui %}
+{#
+  Cible d'échange HTMX de l'explorateur d'amendements : en-tête de résultats,
+  tableau et pagination. Le bloc inclut son propre en-tête de comptage pour que
+  « N amendements » soit rafraîchi en même temps que les lignes.
+#}
+<div id="amendement-results">
+  <div style="padding:16px 32px 8px;display:flex;align-items:baseline;gap:10px">
+    <h4 style="margin:0">{{ total | fr_number }} amendement{{ total | pluralize }}</h4>
+    <span style="font-size:12px;color:var(--color-neutral-600)">
+      sur {{ dossier_amendment_count | fr_number }} · {{ total_with_mentions | fr_number }} porte{{ '' if (total_with_mentions | as_int) <= 1 else 'nt' }} une mention de collaboration
+    </span>
+  </div>
+
+  <div style="padding:0 32px 28px">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:78px">N°</th>
+          <th style="width:92px">Article</th>
+          <th>Auteur</th>
+          <th style="width:88px">Groupe</th>
+          <th style="width:96px">Sort</th>
+          <th style="width:230px">Mention détectée</th>
+          <th style="width:74px">Similaires</th>
+          <th style="width:86px">Dépôt</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if not amendements %}
+          <tr>
+            <td colspan="8" style="text-align:center;padding:24px;color:var(--color-neutral-600)">
+              Aucun amendement ne correspond à ces critères.
+            </td>
+          </tr>
+        {% endif %}
+        {% for a in amendements %}
+          <tr {% if a.mention_formulation %}style="background:var(--color-accent-100)"{% endif %}>
+            <td style="font:600 13px ui-monospace,monospace">
+              <a href="/amendements/{{ a.uid }}" style="text-decoration:none">{{ a.numeroLong }}</a>
+            </td>
+            <td style="font-size:13px">
+              {{ a.divisionArticleDesignation }}{% if a.alineaDesignation %} · al. {{ a.alineaDesignation }}{% endif %}
+            </td>
+            {# `author_name` et `group_abbrev` viennent d'une jointure externe et
+               sont nuls pour les amendements du gouvernement ou d'une commission :
+               une cellule vide, pas le mot « None ». #}
+            <td style="font-size:13px">
+              {{ a.author_name or '—' }}
+              {% if a.nombreCoSignataires %}<span style="color:var(--color-neutral-600)">+{{ a.nombreCoSignataires }}</span>{% endif %}
+            </td>
+            <td>{% if a.group_abbrev %}<span class="tag tag-neutral">{{ a.group_abbrev }}</span>{% endif %}</td>
+            <td>
+              <span class="tag {{ outcome_tag_class(sort_outcome(a.sortAmendement)) }}">{{ a.sortAmendement or '—' }}</span>
+            </td>
+            <td style="font-size:12px">
+              {% if a.mention_formulation %}
+                <span style="background:var(--color-accent-200);padding:1px 4px;font-weight:600">{{ a.mention_formulation }}</span>
+                {{ a.mention_entite or '— entité non nommée' }}
+                {% set extra = (a.mention_count | as_int) - 1 %}
+                {% if extra > 0 %}<span style="color:var(--color-neutral-600)">+{{ extra }}</span>{% endif %}
+              {% endif %}
+            </td>
+            {# similar_count = autres amendements sur le même article de ce dossier #}
+            <td
+              style="font:600 12px ui-monospace,monospace"
+              title="{{ a.similar_count | as_int }} autre(s) amendement(s) sur {{ a.divisionArticleDesignation }}"
+            >{{ a.similar_count if (a.similar_count | as_int) else '' }}</td>
+            <td style="font-size:12px;color:var(--color-neutral-700)">{{ a.dateDepot | fr_short_date }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px">
+      <span style="font-size:12px;color:var(--color-neutral-600)">{{ range_label }}</span>
+      {{ ui.pagination(page, total, limit, '#amendement-results', url_for_page) }}
+    </div>
+  </div>
+</div>

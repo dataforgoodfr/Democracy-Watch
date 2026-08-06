@@ -15,6 +15,7 @@ Voici les différents endpoint:
 * amendements => `https://parlement.tricoteuses.fr/amendements`
 * députés => `https://parlement.tricoteuses.fr/acteurs`
 * votes => `https://parlement.tricoteuses.fr/scrutins`
+* actes de la procédure => `https://parlement.tricoteuses.fr/actesLegislatifs`
 
 
 
@@ -112,6 +113,89 @@ uv run main.py --embed
 just embed
 ```
 
+Pour ne traiter que les amendements d'un seul dossier (utile pour itérer sur un
+texte précis sans réembedder tout le corpus) :
+
+```bash
+just embed --dossier DLR5L16N47129
+```
+
+## Application web
+
+Un seul processus Python sert tout : les pages HTML (`web/`, gabarits Jinja) et
+l'API JSON (`api/`, qui porte le SQL, les agrégations et la similarité). Les vues
+HTML appellent directement les fonctions de service des routeurs — pas d'appel
+HTTP interne — si bien que les deux interfaces partagent une seule implémentation
+des requêtes.
+
+```text
+navigateur ──► /                     (HTML, web/views/ + gabarits Jinja)
+               /dossiers/{uid}…          └──┐
+               /api/**               (JSON, api/routers/)
+                                         └──┴──► fonctions de service
+                                                    ├──► Postgres  (api/db.py)
+                                                    └──► DuckDB    (api/similarity.py)
+```
+
+Aucun outillage Node : pas de `package.json`, pas d'étape de build. Les
+interactions de liste (recherche, facettes, tri, pagination) passent par
+[HTMX](https://htmx.org/), qui échange un fragment de page ; les deux seules
+fonctions ayant besoin d'un état client persistant (historique de consultation,
+seuil de similarité) sont écrites en [Alpine.js](https://alpinejs.dev/). Les deux
+bibliothèques sont chargées depuis un CDN.
+
+### Lancer l'application
+
+```bash
+uv run uvicorn api.main:app --reload
+# ou
+just serve
+```
+
+Interface sur <http://localhost:8000>, documentation interactive de l'API sur
+<http://localhost:8000/docs>, sonde de disponibilité sur
+<http://localhost:8000/health> (état de Postgres et de l'index de similarité).
+
+Pages HTML :
+
+| Route | Contenu |
+| --- | --- |
+| `GET /` | Accueil : compteurs globaux et liste de dossiers filtrable (`q`, `withMentions`, `page`) |
+| `GET /dossiers/{uid}` | Fiche dossier : compteurs, parcours législatif, dépôts par semaine, mentions par groupe |
+| `GET /dossiers/{uid}/amendements` | Explorateur d'amendements : facettes, tri, pagination |
+| `GET /dossiers/{uid}/mentions` | Diagramme de flux groupe politique → acteur extérieur cité |
+| `GET /amendements/{uid}` | Fiche amendement : auteur, dispositif, mentions, scrutin, amendements proches |
+| `GET /scrutins/{uid}` | Scrutin public, hémicycle et vote agrégé par groupe |
+
+Chaque route de liste répond soit la page entière, soit le seul bloc de résultats
+quand HTMX le demande (en-tête `HX-Request`), depuis le même contexte de gabarit :
+recharger une URL filtrée produit exactement ce qu'un échange HTMX aurait produit.
+
+API JSON, publiée pour les consommateurs tiers :
+
+| Route | Contenu |
+| --- | --- |
+| `GET /api/stats` | Compteurs globaux (dossiers, amendements, mentions, scrutins) |
+| `GET /api/dossiers` | Liste filtrée et paginée (`q`, `page`, `procedure`, `statut`, `withMentions`) |
+| `GET /api/dossiers/{uid}` | Fiche dossier : compteurs, parcours du texte (`steps`), dépôts par semaine, mentions par groupe |
+| `GET /api/dossiers/{uid}/amendements` | Amendements du dossier, filtrés/triés/paginés |
+| `GET /api/dossiers/{uid}/mentions` | Flux groupe → entité externe, pour le diagramme |
+| `GET /api/amendements/{uid}` | Fiche amendement : auteur, mentions, scrutin, amendements proches |
+| `GET /api/amendements/{uid}/similar` | Voisins seuls (`k`, `threshold`) |
+| `GET /api/scrutins/{uid}` | Scrutin public et vote agrégé par groupe |
+
+L'interface étant servie par ce même processus, elle est de même origine et ne
+nécessite aucun réglage CORS : `API_ALLOWED_ORIGINS` ne sert qu'à autoriser une
+application extérieure à interroger `/api/**`.
+
+### Similarité entre amendements
+
+Les scores affichés sont des similarités cosinus entre embeddings. Elles
+nécessitent donc `just embed` au préalable ; sans base vectorielle, l'application
+démarre normalement, l'API renvoie `similarityAvailable: false` et l'interface
+indique que la similarité est indisponible plutôt que d'annoncer à tort qu'aucun
+amendement proche n'existe.
+
 ## Comment marche l'ETL
 
 Après avoir exécuté `just download`, les données de l'API des tricoteuses sont sauvegardées dans le dossier `./data/` sous la forme de fichiers JSON.
@@ -158,6 +242,7 @@ Le champ doit porter le même nom sinon l'ETL ne sera pas capable de le trouver.
 
 | Table | Endpoint | Contenu | Volume (législature 17) |
 |---|---|---|---|
+| `actesLegislatifs` | `/actesLegislatifs` | Actes datés de la procédure : dépôts, lectures, CMP, décisions, saisines, promulgation | ~21 400 |
 | `acteurs` | `/acteurs` | Députés / sénateurs (référentiel trans-législature) | ~3 100 |
 | `organes` | `/organes` | Groupes politiques, commissions, assemblées… | ~5 400 |
 | `mandats` | `/mandats` | Jointure acteur ↔ organe (appartenance + dates) | ~25 600 |
@@ -182,6 +267,15 @@ erDiagram
     string titre
     string libelleProcedure
     string statut
+  }
+  actesLegislatifs {
+    string uid PK
+    string parentUid FK
+    string dossierRefUid FK
+    string codeActe
+    string chambre
+    string dateActe
+    string libelleStatutConclusion
   }
   documents {
     string uid PK
@@ -262,6 +356,7 @@ erDiagram
     string dateCosignature
   }
 
+  dossiers    ||--o{ actesLegislatifs      : "dossierRefUid"
   dossiers    ||--o{ documents             : "dossierRefUid"
   dossiers    ||--o{ amendements           : "dossierRefUid"
   dossiers    ||--o{ scrutins              : "dossierRefUid"
@@ -288,6 +383,16 @@ pointe vers l'amendement tranché par le scrutin, et `amendements.scrutinRefUid`
 qui a tranché l'amendement. Le second est le plus large (~11 600 amendements contre ~6 800),
 un même scrutin pouvant trancher plusieurs amendements identiques. La jointure reste clairsemée :
 la plupart des amendements sont tranchés à main levée, sans scrutin public.
+
+Le **parcours d'un texte** se reconstitue depuis `actesLegislatifs` (`web/legislative.py`) :
+`dossiers.statut` ne donne que l'étape courante, alors que le parcours complet est une suite
+d'étapes de longueur variable — deux pour un texte fraîchement déposé, dix pour la loi
+« fin de vie » (`DLR5L17N51670` : deux lectures dans chaque chambre, CMP en désaccord, nouvelle
+lecture, lecture définitive, Conseil constitutionnel). Les actes sont regroupés par préfixe de
+`codeActe` (`AN1`, `SN1`, `CMP`, `ANNLEC`, `ANLDEF`, `CC`, `PROM`…) plutôt qu'en remontant
+`parentUid` : sur un dossier ouvert sous une législature antérieure, une partie des actes
+référence un parent absent du jeu de données et serait comptée comme une étape à part. Le sort
+d'une étape se lit sur son dernier acte porteur d'un `libelleStatutConclusion`.
 
 # Analyse : détection des mentions de collaboration externe
 

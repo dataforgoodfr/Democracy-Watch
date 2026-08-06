@@ -1,0 +1,13 @@
+{% extends "base.html.j2" %}
+
+{% block title %}{{ status_code }} — Democracy Watch{% endblock %}
+
+{% block content %}
+<div style="padding:64px">
+  <div style="font:600 11px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent);margin-bottom:14px">
+    Erreur {{ status_code }}
+  </div>
+  <h1 style="font-size:46px;max-width:16em">{{ detail }}</h1>
+  <a href="/" class="btn btn-primary" style="text-decoration:none;margin-top:12px">← Retour aux dossiers</a>
+</div>
+{% endblock %}

@@ -20,10 +20,11 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import delete, text
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from etl.database import get_engine
+from models.amendement import Amendement
 from models.amendement_mention import AmendementMention
 
 MODELE = "regex:v1"
@@ -216,14 +217,17 @@ def detect(expose: str) -> list[dict]:
 def fetch_amendements(limit: int | None):
     """Return (uid, exposeSommaire) for all eligible amendments."""
     query = (
-        'SELECT uid, "exposeSommaire" FROM amendements '
-        'WHERE "exposeSommaire" IS NOT NULL AND length("exposeSommaire") > 40 '
-        'ORDER BY "numeroOrdreDepot"'
+        select(Amendement.uid, Amendement.exposeSommaire)
+        .where(
+            Amendement.exposeSommaire.is_not(None),
+            func.length(Amendement.exposeSommaire) > 40,
+        )
+        .order_by(Amendement.numeroOrdreDepot)
     )
     if limit:
-        query += " LIMIT :limit"
+        query = query.limit(limit)
     with get_engine().connect() as conn:
-        return conn.execute(text(query), {"limit": limit}).all()
+        return conn.execute(query).all()
 
 
 def persist_mentions(session: Session, uid: str, mentions: list[dict]):

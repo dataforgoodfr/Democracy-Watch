@@ -1,0 +1,92 @@
+{% extends "base.html.j2" %}
+{% import "macros/ui.html.j2" as ui %}
+{% import "macros/charts.html.j2" as charts %}
+{% set nav_section = 'dossiers' %}
+
+{% block title %}{{ dossier.titre | truncate_words(14) }} — Democracy Watch{% endblock %}
+
+{% block content %}
+  <div style="padding:28px 48px 0">
+    <div style="font:12px/1 var(--font-body);color:var(--color-neutral-600);margin-bottom:16px">
+      <a href="/" style="color:inherit;text-decoration:none">Dossiers</a>
+      / <span style="font:600 12px ui-monospace,monospace">{{ dossier.uid }}</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:48px;align-items:start;padding-bottom:24px">
+      <div>
+        <h2 style="font-size:36px;max-width:22em;text-wrap:pretty">{{ dossier.titre }}</h2>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          {# Accent seulement si réellement adopté : « Texte rejeté » ne doit pas
+             porter le style d'un succès. #}
+          <span class="tag {{ outcome_tag_class(statut_outcome(dossier.statut)) }}">
+            {{ dossier.statut or 'Statut inconnu' }}
+          </span>
+          <span class="tag tag-neutral">{{ dossier.libelleProcedure }}</span>
+          <span style="font-size:12px;color:var(--color-neutral-700)">
+            Dernier acte le {{ dossier.dateDernierActe | fr_date }}
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="/dossiers/{{ dossier.uid }}/amendements" class="btn btn-primary btn-block" style="text-decoration:none">
+          Explorer les {{ stats.amendment_count | fr_number }} amendements →
+        </a>
+        <a
+          {# Pas de segment `/alt/` : cette variante répond 404 sur le site de
+             l'AN, seule la forme `/dyn/<legislature>/dossiers/<uid>` résout. #}
+          href="https://www.assemblee-nationale.fr/dyn/{{ dossier.legislature }}/dossiers/{{ dossier.uid }}"
+          target="_blank" rel="noopener noreferrer"
+          class="btn btn-secondary btn-block" style="text-decoration:none;text-align:center"
+        >Dossier sur assemblee-nationale.fr ↗</a>
+        <a href="/dossiers/{{ dossier.uid }}/mentions" class="btn btn-secondary btn-block" style="text-decoration:none;text-align:center">
+          Mentions de collaboration →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bandeau de compteurs -->
+  {% call ui.divider_grid(cols='repeat(6,1fr)', style='border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)') %}
+    {{ ui.stat_cell(stats.amendment_count | fr_number, 'amendements déposés') }}
+    {{ ui.stat_cell(stats.adopted_count | fr_number, 'adoptés · ' ~ adopted_pct ~ ' %') }}
+    {{ ui.stat_cell(stats.group_count | fr_number, 'groupes auteurs') }}
+    {{ ui.stat_cell(stats.scrutin_count | fr_number, 'scrutins publics') }}
+    {{ ui.stat_cell(stats.mention_count | fr_number, 'mentions de collaboration', accent=true) }}
+    {# Était un « — » codé en dur intitulé « familles d'amendements », métrique que
+       l'API ne produit pas. Remplacé par le nombre d'articles réellement amendés. #}
+    {{ ui.stat_cell(stats.article_count | fr_number, 'articles amendés') }}
+  {% endcall %}
+
+  <!-- Corps -->
+  {% call ui.divider_grid(cols='minmax(0,1fr) 420px') %}
+    <div style="background:var(--color-bg);padding:28px 48px 36px">
+      {{ charts.legislative_path(steps) }}
+      <hr class="hr" style="margin:32px 0 20px">
+      {{ charts.deposit_histogram(histogram) }}
+    </div>
+
+    <div style="background:var(--color-surface);padding:28px 32px 36px">
+      <h6>Mentions de collaboration par groupe</h6>
+      <p style="font-size:12px;color:var(--color-neutral-700);margin-top:10px">
+        Amendements dont l'exposé sommaire déclare avoir été travaillé avec un acteur extérieur.
+      </p>
+
+      {% if not mentions_by_group %}
+        <div style="font-size:12px;color:var(--color-neutral-600);margin-top:20px">
+          Aucune mention de collaboration externe détectée sur ce dossier.
+        </div>
+      {% else %}
+        {{ charts.group_bars(mentions_by_group) }}
+      {% endif %}
+
+      <hr class="hr">
+      <div style="font-size:12px;color:var(--color-neutral-700)">
+        Détection par reconnaissance d'entités nommées sur l'exposé sommaire
+        (<span style="font:600 11px ui-monospace,monospace">gliner:v1</span>).
+      </div>
+      <a href="/dossiers/{{ dossier.uid }}/mentions" class="btn btn-ghost" style="margin-top:10px;padding-left:0;text-decoration:none">
+        Voir le flux groupe → source →
+      </a>
+    </div>
+  {% endcall %}
+{% endblock %}

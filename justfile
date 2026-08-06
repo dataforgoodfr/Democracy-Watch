@@ -27,6 +27,11 @@ psql:
 detect-mentions-regex *ARGS:
   uv run python -m analysis.detect_mentions_regex {{ARGS}}
 
+# Nommer les entités des mentions par NER zéro-shot local (GLiNER)
+# Extra flags pass through, e.g.: just extract-entities-gliner --dossier DLR5L17N53187 --persist
+extract-entities-gliner *ARGS:
+  uv run python -m analysis.extract_entities_gliner {{ARGS}}
+
 # Drop the DuckDB vector tables
 vector-db-rebuild:
   uv run main.py --rebuild-vector-database
@@ -36,3 +41,7 @@ vector-db-rebuild:
 embed *ARGS:
   uv run main.py --embed {{ARGS}}
 
+# Serve the whole app: HTML pages on / and the read API on /api (docs on /docs)
+# Extra flags pass through, e.g.: just serve --port 8001
+serve *ARGS:
+  uv run uvicorn api.main:app --reload --host 127.0.0.1 --port 8000 {{ARGS}}

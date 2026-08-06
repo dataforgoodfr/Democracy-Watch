@@ -1,0 +1,42 @@
+{#
+  Gabarit racine, couvrant les deux mises en page : la forme courante (barre de
+  navigation + contenu) et la forme « explorateur » (contenu large + colonne
+  d'historique). Un gabarit enfant demande la seconde forme avec, au niveau
+  racine, `{% set with_sidebar = true %}` — une affectation de premier niveau dans
+  un enfant est visible depuis le parent — puis remplit `{% block sidebar %}`.
+#}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Democracy Watch{% endblock %}</title>
+  {% block meta %}{% endblock %}
+  <link rel="stylesheet" href="{{ url_for('static', path='/ds.css') }}">
+  {#
+    HTMX pilote les listes (recherche, facettes, tri, pagination), Alpine les deux
+    états locaux (historique, seuil de similarité). `defer` sur Alpine est requis :
+    il s'initialise au DOMContentLoaded et doit voir `dw.js` déjà chargé.
+  #}
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="{{ url_for('static', path='/dw.js') }}"></script>
+  <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body>
+  <div style="min-height:100vh;background:var(--color-bg)">
+    {% block nav %}{% include "_nav.html.j2" %}{% endblock %}
+
+    {% if with_sidebar %}
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;align-items:start">
+        <main style="min-width:0">{% block content %}{% endblock %}</main>
+        <aside
+          style="position:sticky;top:0;height:100vh;overflow:auto;border-left:2px solid var(--color-divider);background:var(--color-bg)"
+        >{% block sidebar %}{% endblock %}</aside>
+      </div>
+    {% else %}
+      <main>{{ self.content() }}</main>
+    {% endif %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

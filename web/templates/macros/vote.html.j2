@@ -1,0 +1,97 @@
+{% import "macros/charts.html.j2" as charts %}
+{% import "macros/ui.html.j2" as ui %}
+
+{% macro scrutin_block(scrutin, groupes_votants) -%}
+{% set outcome = scrutin_outcome(scrutin) %}
+<div style="display:flex;flex-direction:column;gap:0">
+  <h6>Scrutin public n° {{ scrutin.numero }}</h6>
+  <div style="font-size:12px;color:var(--color-neutral-700);margin-top:8px">
+    {{ scrutin.dateScrutin | fr_long_date }} · demandé par {{ scrutin.demandeur }}
+  </div>
+
+  <div style="display:flex;align-items:flex-end;gap:16px;margin-top:18px">
+    <div>
+      {#
+        `libelle` est une phrase entière (« L'Assemblée nationale n'a pas adopté ») :
+        elle est rendue en prose en dessous, et non en titre de 40px qui déborderait.
+        Le verdict vient de `scrutin_outcome()`, jamais d'un test de sous-chaîne.
+      #}
+      <div style="font:800 26px/1.1 var(--font-heading);color:{{ 'var(--color-accent)' if outcome == 'adopted' else 'var(--color-text)' }}">
+        {% if outcome == 'adopted' %}Adopté{% elif outcome == 'rejected' %}Rejeté{% else %}Résultat inconnu{% endif %}
+      </div>
+      <div style="font-size:12px;color:var(--color-neutral-700);margin-top:6px">
+        {{ scrutin.libelle }}{% if scrutin.typeMajorite %} · {{ scrutin.typeMajorite }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% call ui.divider_grid(cols='repeat(3,1fr)', border=true, style='margin-top:16px') %}
+    <div style="background:var(--color-bg);padding:10px 12px">
+      <div style="font:800 24px/1 var(--font-heading);color:var(--color-accent)">{{ scrutin.pour }}</div>
+      <div style="font-size:10px;color:var(--color-neutral-700)">pour</div>
+    </div>
+    <div style="background:var(--color-bg);padding:10px 12px">
+      <div style="font:800 24px/1 var(--font-heading)">{{ scrutin.contre }}</div>
+      <div style="font-size:10px;color:var(--color-neutral-700)">contre</div>
+    </div>
+    <div style="background:var(--color-bg);padding:10px 12px">
+      <div style="font:800 24px/1 var(--font-heading);color:var(--color-neutral-600)">{{ scrutin.abstentions }}</div>
+      <div style="font-size:10px;color:var(--color-neutral-700)">abstentions</div>
+    </div>
+  {% endcall %}
+
+  <div style="margin:18px -6px 0">{{ charts.hemicycle(groupes_votants) }}</div>
+
+  <h6 style="margin-top:8px">Position par groupe</h6>
+  <div style="display:grid;gap:7px;margin-top:12px">
+    {% for gv in groupes_votants %}
+      {% set pour_pct = vote_share(gv, 'pour') %}
+      {% set contre_pct = vote_share(gv, 'contre') %}
+      <div style="display:grid;grid-template-columns:66px 1fr 62px;gap:8px;align-items:center;font-size:12px">
+        <span style="font-weight:600">{{ gv.group_abbrev }}</span>
+        <span style="display:flex;height:12px">
+          <span style="width:{{ pour_pct }}%;background:#1d3461"></span>
+          <span style="width:{{ contre_pct }}%;background:#ec3013"></span>
+          <span style="width:{{ [0, 100 - pour_pct - contre_pct] | max }}%;background:#9c9898"></span>
+        </span>
+        <span style="font:600 11px ui-monospace,monospace{% if gv.positionMajoritaire == 'pour' %};color:var(--color-accent-700){% elif gv.positionMajoritaire != 'contre' %};color:var(--color-neutral-600){% endif %}">{{ gv.positionMajoritaire }}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div style="display:flex;gap:14px;font-size:10px;color:var(--color-neutral-700);margin-top:10px">
+    <span style="display:flex;gap:5px;align-items:center"><span style="width:9px;height:9px;background:#1d3461"></span>pour</span>
+    <span style="display:flex;gap:5px;align-items:center"><span style="width:9px;height:9px;background:#ec3013"></span>contre</span>
+    <span style="display:flex;gap:5px;align-items:center"><span style="width:9px;height:9px;background:#9c9898"></span>abstention / non-votant</span>
+  </div>
+</div>
+{%- endmacro %}
+
+
+{% macro no_scrutin_state(sort, date_sort, dossier_scrutin_count=none) -%}
+<div>
+  <div style="border:2px dashed var(--color-divider);padding:22px 20px;text-align:left">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--color-neutral-600)">
+      <path d="M18 11V6a2 2 0 0 0-4 0v5" />
+      <path d="M14 10V4a2 2 0 0 0-4 0v6" />
+      <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+    </svg>
+    <div style="font:800 16px/1.25 var(--font-heading);margin-top:12px">Pas de scrutin public</div>
+    <p style="font-size:13px;color:var(--color-neutral-700);margin:8px 0 0">
+      Cet amendement a été tranché à main levée en commission : l'Assemblée ne publie donc aucun décompte, ni par groupe ni nominatif.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--color-divider)">
+      {% call ui.micro_label() %}Sort officiel{% endcall %}
+      <span class="tag tag-neutral" style="border:1px solid var(--color-divider)">
+        {{ sort or '—' }} · {{ date_sort | fr_date }}
+      </span>
+    </div>
+  </div>
+  {% if dossier_scrutin_count is not none %}
+    <div style="font-size:11px;color:var(--color-neutral-600);margin-top:12px">
+      {{ dossier_scrutin_count }} des amendements du dossier ont fait l'objet d'un scrutin public.
+    </div>
+  {% endif %}
+</div>
+{%- endmacro %}
