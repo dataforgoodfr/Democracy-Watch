@@ -25,7 +25,7 @@ def run(parser):
     elif argv.rebuild_vector_database:
         reset_vector_db()
     elif argv.embed:
-        run_embed(backend_name=argv.backend, model=argv.model)
+        run_embed(backend_name=argv.backend, model=argv.model, dossier=argv.dossier)
     else:
         parser.print_usage()
 
@@ -74,6 +74,11 @@ def get_argv_parser():
         "--backend",
         default=DEFAULT_BACKEND,
         help="Embedding backend: 'sentence-transformers' (local GPU, default) or 'ollama'",
+    )
+    parser.add_argument(
+        "--dossier",
+        default=None,
+        help="Restrict --embed to the amendements of a single dossier (its uid, e.g. DLR5L16N47129)",
     )
     parser.add_argument(
         "--model",

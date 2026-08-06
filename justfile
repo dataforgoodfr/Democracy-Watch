@@ -38,6 +38,7 @@ vector-db-rebuild:
 
 # Embed the amendments into the vector database
 # Extra flags pass through, e.g.: just embed --backend foo --model bar
+# Restrict to a single dossier: just embed --dossier DLR5L16N47129
 embed *ARGS:
   uv run main.py --embed {{ARGS}}
 
